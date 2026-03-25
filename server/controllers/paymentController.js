@@ -40,7 +40,15 @@ const createRazorpayOrder = async (req, res) => {
         });
     } catch (error) {
         console.error('Razorpay create order error:', error);
-        res.status(500).json({ message: 'Payment initiation failed', error: error.message });
+        let message = 'Payment initiation failed';
+        if (error.statusCode === 401) {
+            message = 'Invalid Razorpay API Keys. Please check your .env file.';
+        }
+        res.status(500).json({
+            message,
+            error: error.message,
+            tip: 'Ensure RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are correct in .env'
+        });
     }
 };
 

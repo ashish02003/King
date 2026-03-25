@@ -23,34 +23,47 @@ const MugWrapPreview = ({ photoUrl, wrapType = 'mug', mugImgUrl }) => {
             ctx.clearRect(0, 0, W, H);
 
             // ─── GEOMETRY CONFIGURATION ──────────────────────────────────────────
-            // Adjust these to match the "Mast Curve" look
-            const mugWidth = W * 0.7;        // Width of the mug body
-            const mugHeight = H * 0.75;      // Height of the mug body
-            const mugX = (W - mugWidth) / 2; // Centered X
-            const mugY = (H - mugHeight) / 2 + 20; // Centered Y (slightly down)
+            // Adjust dimensions based on wrapType
+            let mugWidth = W * 0.7;
+            let mugHeight = H * 0.75;
+            let mugX = (W - mugWidth) / 2;
+            let mugY = (H - mugHeight) / 2 + 20;
+            let curveDepth = 28;
 
-            // The "Smile" factor: how much the rim curves down in the middle
-            // Matches the top-down viewing angle in the screenshot.
-            const curveDepth = 28;
+            if (wrapType === 'bottle') {
+                mugWidth = W * 0.5;    // Thinner
+                mugHeight = H * 0.85;  // Taller
+                mugX = (W - mugWidth) / 2;
+                mugY = (H - mugHeight) / 2 + 10;
+                curveDepth = 15;       // Less curve
+            } else if (wrapType === 'phone') {
+                mugWidth = W * 0.55;
+                mugHeight = H * 0.85;
+                mugX = (W - mugWidth) / 2;
+                mugY = (H - mugHeight) / 2 + 10;
+                curveDepth = 8;        // Almost flat
+            }
 
-            // ─── DRAW MUG BODY (Structure) ───────────────────────────────────────
+            // ─── DRAW MUG/BOTTLE BODY (Structure) ───────────────────────────────────────
 
-            // 1. Handle (Draw first so it's behind)
-            ctx.save();
-            ctx.strokeStyle = '#e5e7eb'; // Light gray handle
-            ctx.lineWidth = 18;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            const handleCenterY = mugY + mugHeight / 2;
-            const handleRad = mugHeight * 0.25;
-            // Arc for handle on the right side
-            ctx.arc(mugX + mugWidth - 5, handleCenterY, handleRad, -Math.PI / 2.2, Math.PI / 2.2);
-            ctx.stroke();
-            // Handle shadow/highlight details
-            ctx.strokeStyle = '#f3f4f6';
-            ctx.lineWidth = 8;
-            ctx.stroke();
-            ctx.restore();
+            // 1. Handle (Only for mugs)
+            if (wrapType === 'mug') {
+                ctx.save();
+                ctx.strokeStyle = '#e5e7eb'; // Light gray handle
+                ctx.lineWidth = 18;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                const handleCenterY = mugY + mugHeight / 2;
+                const handleRad = mugHeight * 0.25;
+                // Arc for handle on the right side
+                ctx.arc(mugX + mugWidth - 5, handleCenterY, handleRad, -Math.PI / 2.2, Math.PI / 2.2);
+                ctx.stroke();
+                // Handle shadow/highlight details
+                ctx.strokeStyle = '#f3f4f6';
+                ctx.lineWidth = 8;
+                ctx.stroke();
+                ctx.restore();
+            }
 
             // ─── DRAW WRAPPED PHOTO ──────────────────────────────────────────────
             // We draw the photo slice by slice to achieve the cylindrical "smile" warp.
@@ -209,10 +222,16 @@ const MugWrapPreview = ({ photoUrl, wrapType = 'mug', mugImgUrl }) => {
         photo.src = photoUrl;
     }, [photoUrl, wrapType]);
 
+    const config = {
+        mug: { icon: '☕', label: '3D Mug Preview', desc: 'The actual print will wrap around the mug exactly as shown.' },
+        bottle: { icon: '🫙', label: '3D Bottle Preview', desc: 'Realistic cylindrical preview of your bottle design.' },
+        phone: { icon: '📱', label: '3D Case Preview', desc: 'Realistic mockup of how the design wraps around the case edge.' }
+    }[wrapType] || { icon: '✨', label: '3D Preview', desc: 'Realistic 3D mockup of your custom design.' };
+
     return (
         <div className="mt-6 flex flex-col items-center animate-fade-in-up">
             <h3 className="text-gray-700 font-bold mb-2 flex items-center gap-2">
-                ☕ 3D Mug Preview
+                {config.icon} {config.label}
                 <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">Live</span>
             </h3>
             <div className="relative group">
@@ -229,7 +248,7 @@ const MugWrapPreview = ({ photoUrl, wrapType = 'mug', mugImgUrl }) => {
                 )}
             </div>
             <p className="text-xs text-gray-400 mt-2 text-center max-w-[280px]">
-                This is a realistic 3D preview. The actual print will wrap around the mug exactly as shown.
+                {config.desc}
             </p>
         </div>
     );

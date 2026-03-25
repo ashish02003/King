@@ -4,6 +4,18 @@ import axios from 'axios';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE as API } from '../utils/api';
+import {
+    FaArrowLeft,
+    FaCheckCircle,
+    FaMapMarkerAlt,
+    FaLock,
+    FaUser,
+    FaPhone,
+    FaShoppingBag,
+    FaBox,
+    FaTruck
+} from 'react-icons/fa';
+import toast from 'react-hot-toast';
 
 // Load Razorpay script dynamically
 const loadRazorpay = () => new Promise((resolve) => {
@@ -15,14 +27,36 @@ const loadRazorpay = () => new Promise((resolve) => {
     document.body.appendChild(script);
 });
 
+// ── Field Component ─────────
+const Field = ({ label, name, value, onChange, error, type = 'text', placeholder, maxLength }) => (
+    <div className="flex flex-col gap-1">
+        <label className="text-xs font-black text-gray-500 uppercase tracking-wider">{label}</label>
+        <input
+            type={type}
+            name={name}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            maxLength={maxLength}
+            className={`w-full px-4 py-3 rounded-2xl border-2 text-sm font-medium outline-none transition-all
+                ${error
+                    ? 'border-red-400 bg-red-50 focus:border-red-500'
+                    : 'border-gray-200 bg-gray-50 focus:border-indigo-400 focus:bg-white'
+                }`}
+        />
+        {error && (
+            <span className="text-xs text-red-500 font-bold">{error}</span>
+        )}
+    </div>
+);
+
 const Checkout = () => {
     const navigate = useNavigate();
-    const { cartItems, getSelectedItems, clearCart } = useCart();
+    const { getSelectedItems, clearCart, buyNowItem, setBuyNowItem } = useCart();
     const { user } = useAuth();
 
-    const selectedItems = getSelectedItems();
-
-    const [step, setStep] = useState(1); // 1 = address, 2 = review+pay
+    const selectedItems = buyNowItem ? [buyNowItem] : getSelectedItems();
+    const [step, setStep] = useState(1);
     const [paymentLoading, setPaymentLoading] = useState(false);
 
     const [address, setAddress] = useState({
@@ -37,30 +71,27 @@ const Checkout = () => {
 
     const [errors, setErrors] = useState({});
 
-    // Redirect if nothing is selected
     useEffect(() => {
         if (!user) { navigate('/login'); return; }
-        if (selectedItems.length === 0) { navigate('/cart'); }
-    }, [user, selectedItems]);
+        if (!buyNowItem && selectedItems.length === 0) { navigate('/cart'); }
+    }, [user, selectedItems, buyNowItem]);
 
-    // ── Price Calculation ─────────────────────────────────────────────────────
-    const subtotal = selectedItems.reduce(
-        (acc, item) => acc + (item.price * (item.quantity || 1)), 0
-    );
+    // Subtotal tracks the user's defined "Original Price" (Base + Packing), evaluating to 69.
+    const subtotal = selectedItems.reduce((acc, item) => {
+        const itemOriginalPrice = Number(item.price) + (Number(item.packingCharges) || 0);
+        return acc + (itemOriginalPrice * (item.quantity || 1));
+    }, 0);
 
-    // Packing charges: per item × qty
     const packingChargesTotal = selectedItems.reduce(
-        (acc, item) => acc + ((item.packingCharges || 0) * (item.quantity || 1)), 0
+        (acc, item) => acc + ((Number(item.packingCharges) || 0) * (item.quantity || 1)), 0
     );
 
-    // Shipping charges: flat sum
     const shippingChargesTotal = selectedItems.reduce(
-        (acc, item) => acc + (item.shippingCharges || 0), 0
+        (acc, item) => acc + (Number(item.shippingCharges) || 0), 0
     );
 
     const totalPrice = subtotal + packingChargesTotal + shippingChargesTotal;
 
-    // ── Address Validation ────────────────────────────────────────────────────
     const validate = () => {
         const e = {};
         if (!address.fullName.trim()) e.fullName = 'Full name is required';
@@ -78,44 +109,34 @@ const Checkout = () => {
         if (errors[e.target.name]) setErrors(prev => ({ ...prev, [e.target.name]: '' }));
     };
 
-    // ── Razorpay Payment Initiation ───────────────────────────────────────────
     const handlePayNow = async () => {
         if (!validate()) return;
         setPaymentLoading(true);
 
         const loaded = await loadRazorpay();
         if (!loaded) {
-            toast.error('Failed to load payment gateway. Check your internet.');
+            toast.error('Payment gateway failed to load.');
             setPaymentLoading(false);
             return;
         }
 
         try {
-            // Step 1: Create Razorpay order on backend
             const { data: razorpayOrder } = await axios.post(
                 `${API}/payment/create-order`,
                 { amount: totalPrice },
                 { headers: { Authorization: `Bearer ${user.token}` } }
             );
 
-            // Step 2: Open Razorpay checkout modal
             const options = {
                 key: razorpayOrder.keyId,
                 amount: razorpayOrder.amount,
                 currency: razorpayOrder.currency,
                 name: 'Mimitiinaa',
-                description: 'Custom Product Order',
                 order_id: razorpayOrder.orderId,
-                prefill: {
-                    name: address.fullName,
-                    email: user.email,
-                    contact: address.phone
-                },
-                theme: { color: '#4f46e5' },
-
+                prefill: { name: address.fullName, email: user.email, contact: address.phone },
+                theme: { color: '#2D5A27' },
                 handler: async (response) => {
                     try {
-                        // Step 3: Verify payment signature
                         const { data: verifyData } = await axios.post(
                             `${API}/payment/verify`,
                             {
@@ -131,11 +152,10 @@ const Checkout = () => {
                             return;
                         }
 
-                        // Step 4: Create order in our database
                         const orderPayload = {
                             orderItems: selectedItems.map(item => ({
                                 template: item.template?._id || item.template,
-                                customizedJson: item.canvasJSON || {},
+                                customizedJson: item.customizedJson || item.canvasJSON || {},
                                 finalImageUrl: item.finalImageUrl || item.finalDesignUrl || '',
                                 price: item.price,
                                 packingCharges: item.packingCharges || 0,
@@ -156,176 +176,97 @@ const Checkout = () => {
                             { headers: { Authorization: `Bearer ${user.token}` } }
                         );
 
-                        // Step 5: Clear cart (backend already clears it too)
-                        await clearCart();
+                        if (buyNowItem) setBuyNowItem(null);
+                        else await clearCart();
 
                         toast.success('🎉 Order placed successfully!');
                         navigate(`/order-success/${createdOrder._id}`);
                     } catch (err) {
-                        console.error('Order creation error:', err);
-                        toast.error(err?.response?.data?.message || 'Order creation failed. Contact support.');
+                        toast.error('Order creation failed.');
                     } finally {
                         setPaymentLoading(false);
                     }
                 },
-
-                modal: {
-                    ondismiss: () => {
-                        setPaymentLoading(false);
-                        toast('Payment cancelled.', { icon: '⚠️' });
-                    }
-                }
+                modal: { ondismiss: () => setPaymentLoading(false) }
             };
 
             const rzp = new window.Razorpay(options);
             rzp.open();
         } catch (err) {
-            console.error('Payment initiation error:', err);
-            toast.error(err?.response?.data?.message || 'Payment initiation failed');
+            toast.error('Payment failed to initiate.');
             setPaymentLoading(false);
         }
     };
 
-    // ── Field Component ───────────────────────────────────────────────────────
-    const Field = ({ label, name, type = 'text', placeholder, maxLength }) => (
-        <div className="flex flex-col gap-1">
-            <label className="text-xs font-black text-gray-500 uppercase tracking-wider">{label}</label>
-            <input
-                type={type}
-                name={name}
-                value={address[name]}
-                onChange={handleChange}
-                placeholder={placeholder}
-                maxLength={maxLength}
-                className={`w-full px-4 py-3 rounded-2xl border-2 text-sm font-medium outline-none transition-all
-                    ${errors[name]
-                        ? 'border-red-400 bg-red-50 focus:border-red-500'
-                        : 'border-gray-200 bg-gray-50 focus:border-indigo-400 focus:bg-white'
-                    }`}
-            />
-            {errors[name] && (
-                <span className="text-xs text-red-500 font-bold">{errors[name]}</span>
-            )}
-        </div>
-    );
-
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 py-10 px-4">
+        <div className="min-h-screen bg-slate-50/50 py-10 px-4">
             <div className="max-w-6xl mx-auto">
-
-                {/* Header */}
                 <div className="flex items-center gap-4 mb-8">
-                    <button
-                        onClick={() => navigate('/cart')}
-                        className="w-10 h-10 flex items-center justify-center rounded-2xl border-2 border-gray-200 bg-white hover:bg-gray-50 transition-all"
-                    >
+                    <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-2xl border-2 border-gray-200 bg-white shadow-sm">
                         <FaArrowLeft className="text-gray-500" />
                     </button>
                     <div>
                         <h1 className="text-3xl font-black text-gray-900 tracking-tight">Checkout</h1>
-                        <p className="text-sm text-gray-400 font-medium">Secure checkout powered by Razorpay</p>
+                        <p className="text-sm text-gray-400 font-medium">Industry Standard Secure Checkout</p>
                     </div>
                 </div>
 
-                {/* Progress Steps */}
-                <div className="flex items-center gap-3 mb-8">
-                    {[
-                        { num: 1, label: 'Delivery Address' },
-                        { num: 2, label: 'Review & Pay' }
-                    ].map((s, i) => (
-                        <div key={s.num} className="flex items-center gap-3">
-                            <div className={`flex items-center gap-2 px-4 py-2 rounded-full font-black text-sm transition-all
-                                ${step >= s.num
-                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
-                                    : 'bg-white text-gray-400 border-2 border-gray-200'}`}
-                            >
-                                {step > s.num
-                                    ? <FaCheckCircle className="text-white" />
-                                    : <span>{s.num}</span>
-                                }
-                                {s.label}
-                            </div>
-                            {i < 1 && <div className={`h-0.5 w-8 ${step > 1 ? 'bg-indigo-400' : 'bg-gray-200'}`} />}
-                        </div>
-                    ))}
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-                    {/* LEFT: Address / Review */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                    {/* LEFT COLUMN: Shipping & Address */}
                     <div className="lg:col-span-2 space-y-6">
-
-                        {/* Step 1: Address Form */}
-                        <div className={`bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden ${step !== 1 ? 'opacity-60 pointer-events-none' : ''}`}>
-                            <div className="px-8 py-5 border-b border-gray-100 flex items-center gap-3">
-                                <div className="w-9 h-9 bg-indigo-100 rounded-2xl flex items-center justify-center">
-                                    <FaMapMarkerAlt className="text-indigo-600 text-sm" />
-                                </div>
-                                <div>
-                                    <h2 className="font-black text-gray-800 text-base">Delivery Address</h2>
-                                    <p className="text-xs text-gray-400">Where should we deliver?</p>
-                                </div>
-                            </div>
-                            <div className="p-8 grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                <Field label="Full Name" name="fullName" placeholder="Ashish Kumar" />
-                                <Field label="Phone Number" name="phone" type="tel" placeholder="10-digit mobile" maxLength={10} />
-                                <div className="sm:col-span-2">
-                                    <Field label="Address Line 1" name="addressLine1" placeholder="House No., Street, Area" />
-                                </div>
-                                <div className="sm:col-span-2">
-                                    <Field label="Address Line 2 (Optional)" name="addressLine2" placeholder="Landmark, Colony, etc." />
-                                </div>
-                                <Field label="City" name="city" placeholder="Your City" />
-                                <Field label="State" name="state" placeholder="Your State" />
-                                <Field label="Pincode" name="pincode" placeholder="6-digit pincode" maxLength={6} />
-                            </div>
-                            <div className="px-8 pb-8">
-                                <button
-                                    onClick={() => { if (validate()) setStep(2); }}
-                                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl transition-all shadow-lg shadow-indigo-200 hover:-translate-y-0.5 active:scale-95 text-sm uppercase tracking-widest"
-                                >
-                                    Continue to Review →
-                                </button>
-                            </div>
+                        {/* Progress Stepper */}
+                        <div className="flex items-center gap-4 mb-2">
+                             <div className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest ${step === 1 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-green-600 text-white'}`}>
+                                 1. Shipping Address
+                             </div>
+                             <div className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest ${step === 2 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-gray-200 text-gray-400'}`}>
+                                 2. Payment Review
+                             </div>
                         </div>
 
-                        {/* Step 2: Address Review (locked) */}
-                        {step === 2 && (
+                        {/* Step 1 Form */}
+                        {step === 1 && (
                             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                                <div className="px-8 py-5 border-b border-gray-100 flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 bg-green-100 rounded-2xl flex items-center justify-center">
-                                            <FaLock className="text-green-600 text-sm" />
-                                        </div>
-                                        <div>
-                                            <h2 className="font-black text-gray-800 text-base">Delivery Address</h2>
-                                            <p className="text-xs text-gray-400">Address is locked for payment</p>
-                                        </div>
+                                <div className="p-8 grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                    <Field label="Full Name" name="fullName" value={address.fullName} onChange={handleChange} error={errors.fullName} placeholder="Your Name" />
+                                    <Field label="Phone" name="phone" value={address.phone} onChange={handleChange} error={errors.phone} type="tel" placeholder="10-digit mobile" maxLength={10} />
+                                    <div className="sm:col-span-2">
+                                        <Field label="Address Line 1" name="addressLine1" value={address.addressLine1} onChange={handleChange} error={errors.addressLine1} placeholder="House / Street" />
                                     </div>
-                                    <button
-                                        onClick={() => setStep(1)}
-                                        className="text-xs font-black text-indigo-600 hover:text-indigo-800 border border-indigo-200 px-4 py-1.5 rounded-xl transition-all"
-                                    >
-                                        Edit
+                                    <div className="sm:col-span-2">
+                                        <Field label="Address Line 2" name="addressLine2" value={address.addressLine2} onChange={handleChange} placeholder="Landmark / Area" />
+                                    </div>
+                                    <Field label="City" name="city" value={address.city} onChange={handleChange} error={errors.city} />
+                                    <Field label="State" name="state" value={address.state} onChange={handleChange} error={errors.state} />
+                                    <Field label="Pincode" name="pincode" value={address.pincode} onChange={handleChange} error={errors.pincode} maxLength={6} />
+                                </div>
+                                <div className="px-8 pb-8">
+                                    <button onClick={() => { if (validate()) setStep(2); }} className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg hover:-translate-y-0.5 transition-all text-sm uppercase tracking-widest">
+                                        Continue to Payment →
                                     </button>
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Step 2 Review */}
+                        {step === 2 && (
+                            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4">
                                 <div className="p-8">
-                                    <div className="bg-gray-50 rounded-2xl p-5 space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <FaUser className="text-gray-400 text-xs" />
-                                            <span className="font-black text-gray-800">{address.fullName}</span>
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="font-black text-gray-900 uppercase text-xs tracking-widest">Shipping To:</h3>
+                                        <button onClick={() => setStep(1)} className="text-xs font-black text-indigo-600 underline">Change Address</button>
+                                    </div>
+                                    <div className="bg-slate-50 p-6 rounded-2xl space-y-3">
+                                        <div className="flex items-center gap-3">
+                                            <FaUser className="text-slate-400 text-xs" />
+                                            <p className="font-black text-slate-800">{address.fullName} <span className="text-slate-400 font-bold ml-2">| +91 {address.phone}</span></p>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <FaPhone className="text-gray-400 text-xs" />
-                                            <span className="text-gray-600 font-medium">+91 {address.phone}</span>
-                                        </div>
-                                        <div className="flex items-start gap-2">
-                                            <FaMapMarkerAlt className="text-gray-400 text-xs mt-1" />
-                                            <span className="text-gray-600 font-medium">
-                                                {address.addressLine1}
-                                                {address.addressLine2 && `, ${address.addressLine2}`}
-                                                , {address.city}, {address.state} — {address.pincode}
-                                            </span>
+                                        <div className="flex items-start gap-3">
+                                            <FaMapMarkerAlt className="text-slate-400 text-xs mt-1" />
+                                            <p className="text-slate-600 font-medium text-sm">
+                                                {address.addressLine1}, {address.addressLine2 ? `${address.addressLine2}, ` : ''} 
+                                                <span className="block">{address.city}, {address.state} — {address.pincode}</span>
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -333,115 +274,118 @@ const Checkout = () => {
                         )}
                     </div>
 
-                    {/* RIGHT: Order Summary */}
+                    {/* RIGHT COLUMN: Order Summary */}
                     <div className="lg:col-span-1">
-                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden sticky top-24">
-                            <div className="px-6 py-5 border-b border-gray-100">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 bg-orange-100 rounded-2xl flex items-center justify-center">
-                                        <FaShoppingBag className="text-orange-600 text-sm" />
+                        <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden sticky top-10">
+                            {/* Summary Header */}
+                            <div className="p-8 border-b border-slate-100 bg-slate-50/50">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg">
+                                        <FaShoppingBag className="text-white" />
                                     </div>
-                                    <h2 className="font-black text-gray-800">Order Summary</h2>
+                                    <div>
+                                        <h2 className="font-black text-slate-900 uppercase tracking-widest text-sm">Review Order</h2>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Final check before payment</p>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Items */}
-                            <div className="px-6 py-4 space-y-3 max-h-64 overflow-y-auto">
-                                {selectedItems.map((item, i) => (
-                                    <div key={i} className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
-                                            {(item.finalImageUrl || item.finalDesignUrl)
-                                                ? <img src={item.finalImageUrl || item.finalDesignUrl} alt="" className="w-full h-full object-contain" />
-                                                : <div className="w-full h-full flex items-center justify-center"><FaBox className="text-gray-400" /></div>
-                                            }
+                            {/* Item List */}
+                            <div className="p-6 space-y-4 max-h-[300px] overflow-y-auto bg-white">
+                                {selectedItems.map((item, i) => {
+                                    const combinedPrice = Number(item.price) + (Number(item.packingCharges) || 0);
+                                    return (
+                                        <div key={i} className="flex gap-4 p-4 rounded-3xl bg-slate-50/50 border border-slate-100 items-start">
+                                            <img 
+                                                src={item.finalImageUrl || item.finalDesignUrl || 'https://placehold.co/100'} 
+                                                className="w-16 h-16 rounded-xl object-cover bg-white border border-slate-100"
+                                                alt={item.template?.name} 
+                                            />
+                                                <div className="flex-1 min-w-0">
+                                                <p className="font-black text-slate-900 text-[13px] truncate uppercase">{item.template?.name || 'Product'}</p>
+                                                <div className="flex flex-col gap-1 mt-1">
+                                                    <span className="text-[10px] font-bold text-slate-500">Original Price: ₹{(Number(item.price) + (Number(item.packingCharges) || 0)).toLocaleString()}</span>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className="text-[10px] font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-100">Qty: {item.quantity || 1}</span>
+                                                    </div>
+                                                </div>
+                                                <p className="text-[14px] font-[1000] text-slate-900 mt-2">₹{(combinedPrice * (item.quantity || 1)).toLocaleString()}</p>
+                                            </div>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-black text-gray-800 truncate">
-                                                {item.template?.name || 'Custom Product'}
-                                            </p>
-                                            <p className="text-xs text-gray-400">Qty: {item.quantity || 1}</p>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Breakdown Footer */}
+                            <div className="p-8 bg-slate-50/30 border-t border-slate-100 space-y-4">
+                                <div className="flex justify-between items-center text-[12px] font-bold text-slate-500 uppercase tracking-widest">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 text-[10px] shadow-sm">
+                                            <FaBox />
                                         </div>
-                                        <span className="text-sm font-black text-gray-700">
-                                            ₹{(item.price * (item.quantity || 1)).toLocaleString()}
-                                        </span>
+                                        <span>Product Base Price</span>
                                     </div>
-                                ))}
-                            </div>
-
-                            {/* Price Breakdown */}
-                            <div className="border-t border-gray-100 px-6 py-5 space-y-3 bg-slate-50/50">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-500 font-medium">
-                                        <FaShoppingBag className="inline mr-1.5 text-indigo-400/50" />
-                                        Product Cost
-                                    </span>
-                                    <span className="font-bold text-gray-700">₹{subtotal.toLocaleString()}</span>
+                                    <span className="text-slate-900">₹{subtotal.toLocaleString()}</span>
                                 </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-500 font-medium">
-                                        <FaBox className="inline mr-1.5 text-orange-400/50" />
-                                        Packing Charges
-                                    </span>
-                                    <span className={`font-bold ${packingChargesTotal > 0 ? 'text-gray-700' : 'text-gray-300'}`}>
-                                        ₹{packingChargesTotal.toLocaleString()}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-500 font-medium">
-                                        <FaTruck className="inline mr-1.5 text-blue-400/50" />
-                                        Shipping Fee
-                                    </span>
-                                    <span className={`font-bold ${shippingChargesTotal === 0 ? 'text-green-600' : 'text-gray-700'}`}>
-                                        {shippingChargesTotal === 0 ? 'FREE' : `₹${shippingChargesTotal.toLocaleString()}`}
-                                    </span>
-                                </div>
-                                <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
-                                    <span className="font-black text-gray-800 text-base">Total</span>
-                                    <span className="text-2xl font-black text-indigo-700">
-                                        ₹{totalPrice.toLocaleString()}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Pay Now CTA */}
-                            <div className="px-6 pb-6">
-                                {step === 2 ? (
-                                    <button
-                                        onClick={handlePayNow}
-                                        disabled={paymentLoading}
-                                        className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl
-                                            ${paymentLoading
-                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-indigo-300 active:scale-95'
-                                            }`}
-                                    >
-                                        {paymentLoading
-                                            ? <span className="flex items-center justify-center gap-2">
-                                                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                                                Processing...
-                                            </span>
-                                            : <span className="flex items-center justify-center gap-2">
-                                                <FaLock />
-                                                Pay ₹{totalPrice.toLocaleString()} Now
-                                            </span>
-                                        }
-                                    </button>
-                                ) : (
-                                    <div className="w-full py-4 rounded-2xl bg-gray-100 text-gray-400 font-black text-sm text-center">
-                                        Complete address to pay
+                                <div className="flex justify-between items-center text-[12px] font-bold text-slate-500 uppercase tracking-widest">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 text-[10px] shadow-sm">
+                                            📦
+                                        </div>
+                                        <span>Packing Charges</span>
                                     </div>
-                                )}
-
-                                <div className="flex items-center gap-2 mt-4 justify-center">
-                                    <FaLock className="text-gray-400 text-xs" />
-                                    <span className="text-[11px] text-gray-400 font-medium">
-                                        256-bit SSL Secured by Razorpay
+                                    <span className="text-slate-900">+ ₹{packingChargesTotal.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[12px] font-bold text-slate-500 uppercase tracking-widest">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500 text-[10px] shadow-sm">
+                                            <FaTruck />
+                                        </div>
+                                        <span>Standard Shipping</span>
+                                    </div>
+                                    <span className={shippingChargesTotal === 0 ? 'text-emerald-500 font-black' : 'text-slate-900'}>
+                                        {shippingChargesTotal === 0 ? 'FREE' : `+ ₹${shippingChargesTotal.toLocaleString()}`}
                                     </span>
+                                </div>
+
+                                <div className="pt-6 border-t-2 border-dashed border-slate-200 mt-2">
+                                    <div className="flex justify-between items-end">
+                                        <div className="space-y-1">
+                                            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Grand Total</p>
+                                            <p className="text-[9px] text-slate-400 font-bold italic uppercase tracking-tighter">(Taxes Included)</p>
+                                        </div>
+                                        <p className="text-[40px] font-[1000] text-[#2D5A27] leading-[0.8] tracking-tighter">
+                                            ₹{totalPrice.toLocaleString()}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Payment Button */}
+                                <div className="mt-8">
+                                    {step === 2 ? (
+                                        <button
+                                            onClick={handlePayNow}
+                                            disabled={paymentLoading}
+                                            className="w-full py-5 bg-[#2D5A27] text-white font-black rounded-3xl shadow-xl shadow-green-900/10 hover:-translate-y-1 transition-all disabled:opacity-50 flex items-center justify-center gap-3 uppercase tracking-widest text-[13px]"
+                                        >
+                                            {paymentLoading ? (
+                                                <span className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                                            ) : (
+                                                <><FaLock size={12} /> Pay ₹{totalPrice.toLocaleString()} Securely</>
+                                            )}
+                                        </button>
+                                    ) : (
+                                        <div className="w-full py-5 bg-slate-200 text-slate-400 font-black rounded-3xl text-center uppercase tracking-widest text-[11px]">
+                                            Continue address to pay
+                                        </div>
+                                    )}
+                                    <div className="flex justify-center items-center gap-2 mt-4 text-[10px] font-bold text-slate-400 uppercase">
+                                        <FaLock size={10} /> 256-bit SSL Layered Security
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>

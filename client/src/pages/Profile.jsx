@@ -576,7 +576,7 @@ const Profile = () => {
                                             </div>
                                             <h4 className="text-xl font-black text-gray-800 mb-2">No orders yet</h4>
                                             <p className="text-gray-400 font-medium mb-6">You haven't placed any orders yet.</p>
-                                            <Link to="/" className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all inline-block">
+                                            <Link to="/" className="bg-[#700000] text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-red-900/10 hover:bg-[#5a0000] transition-all inline-block">
                                                 Start Shopping
                                             </Link>
                                         </div>
@@ -600,7 +600,7 @@ const Profile = () => {
                                                                 </div>
                                                             </div>
                                                             <StatusBadge status={order.orderStatus || order.status} />
-                                                            <p className="text-xl font-black text-indigo-600">₹{order.totalPrice?.toLocaleString()}</p>
+                                                            <p className="text-xl font-black" style={{ color: '#2D5A27' }}>₹{order.totalPrice?.toLocaleString()}</p>
                                                         </div>
 
                                                         {/* Order Items */}
@@ -630,7 +630,7 @@ const Profile = () => {
                                                                     <div className="flex justify-between"><span className="text-gray-500 font-medium flex items-center gap-1"><FaShoppingBag className="text-gray-400" /> Product Cost</span><span className="font-bold text-gray-800">₹{order.subtotal?.toLocaleString()}</span></div>
                                                                     <div className="flex justify-between"><span className="text-gray-500 font-medium flex items-center gap-1"><FaBox className="text-gray-400" /> Packing Charges</span><span className={`font-bold ${order.packingChargesTotal > 0 ? 'text-gray-800' : 'text-gray-300'}`}>₹{order.packingChargesTotal || 0}</span></div>
                                                                     <div className="flex justify-between"><span className="text-gray-500 font-medium flex items-center gap-1"><FaTruck className="text-gray-400" /> Shipping Fee</span><span className={`font-bold ${order.shippingChargesTotal === 0 ? 'text-green-600' : 'text-gray-800'}`}>{order.shippingChargesTotal === 0 ? 'FREE' : `₹${order.shippingChargesTotal}`}</span></div>
-                                                                    <div className="flex justify-between border-t border-gray-200 pt-1.5"><span className="font-black text-gray-900">Total Paid</span><span className="font-black text-indigo-700">₹{order.totalPrice?.toLocaleString()}</span></div>
+                                                                    <div className="flex justify-between border-t border-gray-200 pt-1.5"><span className="font-black text-gray-900">Total Paid</span><span className="font-black" style={{ color: '#2D5A27' }}>₹{order.totalPrice?.toLocaleString()}</span></div>
                                                                 </div>
                                                             )}
 

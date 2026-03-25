@@ -194,6 +194,20 @@ const templateSchema = new mongoose.Schema({
     shippingCharges: {
         type: Number,
         default: 0   // Flat shipping cost per order
+    },
+
+    // ─── Product Info for User-facing display ───────────────────────────────────
+    description: {
+        type: String,
+        default: ''  // Full product description
+    },
+    uses: {
+        type: [String],
+        default: []  // e.g. ['Corporate gifting', 'Personal use']
+    },
+    benefits: {
+        type: [String],
+        default: []  // e.g. ['BPA Free', 'Dishwasher safe']
     }
 }, { timestamps: true });
 

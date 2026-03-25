@@ -7,7 +7,7 @@ const CategoryCard = ({ title, image, link, bgClass = "bg-gray-50", className = 
             to={link}
             className={`flex flex-col items-center group cursor-pointer ${className}`}
         >
-            <div className={`w-full aspect-square rounded-xl overflow-hidden relative border border-slate-200 bg-white shadow-[0_4px_10px_rgba(0,0,0,0.02)] group-hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] group-hover:border-blue-500/20 transition-all duration-300 flex items-center justify-center p-6 md:p-8`}>
+            <div className={`w-full aspect-square rounded-xl overflow-hidden relative border border-luxury-cream bg-white shadow-[0_4px_10px_rgba(0,0,0,0.02)] group-hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] group-hover:border-luxury-gold/20 transition-all duration-300 flex items-center justify-center p-6 md:p-8`}>
                 <img
                     src={image}
                     alt={title}
@@ -19,7 +19,7 @@ const CategoryCard = ({ title, image, link, bgClass = "bg-gray-50", className = 
                 />
             </div>
 
-            <h3 className="mt-4 text-[11px] font-[900] text-slate-900 tracking-[0.1em] group-hover:text-blue-600 transition-colors uppercase text-center">
+            <h3 className="mt-4 text-[11px] font-[900] text-luxury-charcoal tracking-[0.1em] group-hover:text-luxury-gold transition-colors uppercase text-center">
                 {title}
             </h3>
         </Link >

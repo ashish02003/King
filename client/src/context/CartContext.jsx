@@ -2,12 +2,14 @@ import { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
 import { API_BASE } from '../utils/api';
+import toast from 'react-hot-toast';
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
     const [cartItems, setCartItems] = useState([]);
     const [selectedItemIds, setSelectedItemIds] = useState([]); // ✅ NEW: Track selected items for checkout
+    const [buyNowItem, setBuyNowItem] = useState(null); // ✅ NEW: Single item for direct checkout
     const [loading, setLoading] = useState(true);
     const { user } = useAuth();
     const API_URL = `${API_BASE}/cart`;
@@ -52,10 +54,10 @@ export const CartProvider = ({ children }) => {
             // Automatically select the newly added item
             setSelectedItemIds(prev => [...prev, data._id]);
             toast.success('Added to cart!');
-            return true;
+            return data;
         } catch (error) {
             toast.error(error.response?.data?.message || 'Error adding to cart');
-            return false;
+            return null;
         }
     };
 
@@ -112,6 +114,9 @@ export const CartProvider = ({ children }) => {
         <CartContext.Provider value={{
             cartItems,
             selectedItemIds,
+            setSelectedItemIds,
+            buyNowItem,
+            setBuyNowItem,
             toggleSelection,
             getSelectedItems,
             loading,

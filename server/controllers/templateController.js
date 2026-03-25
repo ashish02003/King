@@ -24,7 +24,10 @@ const createTemplate = async (req, res) => {
             printSize,
             moq,
             packingCharges,
-            shippingCharges
+            shippingCharges,
+            description,
+            uses,
+            benefits
         } = req.body;
 
         const template = await Template.create({
@@ -47,6 +50,9 @@ const createTemplate = async (req, res) => {
             moq,
             packingCharges: packingCharges || 0,
             shippingCharges: shippingCharges || 0,
+            description: description || '',
+            uses: uses || [],
+            benefits: benefits || [],
             createdBy: req.user?._id
         });
 
@@ -121,33 +127,42 @@ const updateTemplate = async (req, res) => {
             printSize,
             moq,
             packingCharges,
-            shippingCharges
+            shippingCharges,
+            description,
+            uses,
+            benefits
         } = req.body;
 
-        const template = await Template.findById(req.params.id);
+        const updatedTemplate = await Template.findByIdAndUpdate(
+            req.params.id,
+            {
+                name,
+                category,
+                canvasSettings,
+                previewImage,
+                demoImageUrl,
+                overlayImageUrl,
+                backgroundImageUrl,
+                maskImageUrl,
+                printArea,
+                basePrice,
+                brand,
+                modelName,
+                caseType,
+                variantNo,
+                productSize,
+                printSize,
+                moq,
+                packingCharges,
+                shippingCharges,
+                description,
+                uses,
+                benefits
+            },
+            { new: true, runValidators: true }
+        );
 
-        if (template) {
-            template.name = name || template.name;
-            template.category = category || template.category;
-            template.canvasSettings = canvasSettings || template.canvasSettings;
-            template.previewImage = previewImage || template.previewImage;
-            template.demoImageUrl = demoImageUrl !== undefined ? demoImageUrl : template.demoImageUrl;
-            template.overlayImageUrl = overlayImageUrl !== undefined ? overlayImageUrl : template.overlayImageUrl;
-            template.backgroundImageUrl = backgroundImageUrl !== undefined ? backgroundImageUrl : template.backgroundImageUrl;
-            template.maskImageUrl = maskImageUrl !== undefined ? maskImageUrl : template.maskImageUrl;
-            template.printArea = printArea || template.printArea;
-            template.basePrice = basePrice || template.basePrice;
-            template.brand = brand || template.brand;
-            template.modelName = modelName || template.modelName;
-            template.caseType = caseType || template.caseType;
-            template.variantNo = variantNo || template.variantNo;
-            template.productSize = productSize || template.productSize;
-            template.printSize = printSize || template.printSize;
-            template.moq = moq || template.moq;
-            template.packingCharges = packingCharges !== undefined ? packingCharges : template.packingCharges;
-            template.shippingCharges = shippingCharges !== undefined ? shippingCharges : template.shippingCharges;
-
-            const updatedTemplate = await template.save();
+        if (updatedTemplate) {
             res.json(updatedTemplate);
         } else {
             res.status(404).json({ message: 'Template not found' });

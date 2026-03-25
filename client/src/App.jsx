@@ -2,13 +2,18 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
-import AdminLogin from './pages/AdminLogin';
 import Register from './pages/Register';
-import AdminDashboard from './pages/AdminDashboard';
-import AdminOrders from './pages/AdminOrders';
-import AdminUsers from './pages/AdminUsers';
-import AdminCategories from './pages/AdminCategories';
-import CreateTemplate from './pages/CreateTemplate';
+import {
+    AdminLogin,
+    AdminDashboard,
+    AdminProducts,
+    AdminOrders,
+    AdminUsers,
+    AdminCategories,
+    CreateTemplate,
+    AdminLayout,
+    AdminSettings
+} from './admin';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import CustomizeProduct from './pages/CustomizeProduct';
@@ -19,6 +24,7 @@ import ProductCategory from './pages/ProductCategory';
 import TemplateDetails from './pages/TemplateDetails';
 import Checkout from './pages/Checkout';
 import OrderSuccess from './pages/OrderSuccess';
+import QuickBuy from './pages/QuickBuy';
 import { FaShoppingCart, FaUser, FaChevronDown, FaChevronUp, FaSignOutAlt, FaUserCircle, FaTimes } from 'react-icons/fa';
 import { Toaster } from 'react-hot-toast';
 import { CartProvider, useCart } from './context/CartContext';
@@ -78,10 +84,11 @@ const Navigation = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // Hide header on auth pages
+    // Hide header on auth pages and admin layout
     const isAuthPage = ['/login', '/register', '/admin/login'].includes(location.pathname);
+    const isAdminDashboard = location.pathname.startsWith('/admin') && location.pathname !== '/admin/login';
 
-    if (isAuthPage) return null;
+    if (isAuthPage || isAdminDashboard) return null;
 
     const handleLogoutClick = () => {
         setIsProfileOpen(false);
@@ -93,6 +100,20 @@ const Navigation = () => {
         logout();
     };
 
+    const handleDesignsClick = (e) => {
+        if (location.pathname === '/') {
+            e.preventDefault();
+            const element = document.getElementById('designs');
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+    };
+
+    const handleHomeClick = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     return (
         <>
             <LogoutModal
@@ -101,29 +122,33 @@ const Navigation = () => {
                 onCancel={() => setShowLogoutModal(false)}
             />
             <header className={`w-full sticky top-0 z-50 transition-all duration-700 font-sans ${scrolled
-                ? 'bg-white/90 backdrop-blur-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04),0_20px_60px_-15px_rgba(0,0,0,0.08)] py-1.5 border-b border-slate-50'
-                : 'bg-transparent py-5 border-b border-transparent'
+                ? 'bg-white/90 backdrop-blur-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04),0_20px_60px_-15px_rgba(0,0,0,0.08)] py-1.5 border-b border-luxury-gold/10'
+                : 'bg-transparent py-5 border-b border-white/5'
                 }`}>
                 <nav className="max-w-7xl mx-auto px-6 h-12 md:h-16 flex items-center justify-between">
                     {/* Left: Logo */}
-                    <Link to="/" className="hover:opacity-90 transition-all transform active:scale-95">
+                    <Link to="/" onClick={handleHomeClick} className="hover:opacity-90 transition-all transform active:scale-95">
                         <Logo />
                     </Link>
 
                     {/* Middle: Desktop Nav Links */}
                     <div className="hidden lg:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
-                        <Link to="/" className="text-[13px] font-black text-slate-900 hover:text-blue-600 transition-colors uppercase tracking-[0.1em] relative group">
+                        <Link to="/" onClick={handleHomeClick} className="text-[13px] font-black text-luxury-charcoal hover:text-luxury-gold transition-colors uppercase tracking-[0.1em] relative group">
                             Home
-                            <span className="absolute -bottom-1.5 left-0 w-0 h-[2px] bg-blue-600 group-hover:w-full transition-all duration-300"></span>
+                            <span className="absolute -bottom-1.5 left-0 w-0 h-[2px] bg-luxury-gold group-hover:w-full transition-all duration-300"></span>
                         </Link>
-                        <Link to="/" className="text-[13px] font-black text-slate-900 hover:text-blue-600 transition-colors uppercase tracking-[0.1em] relative group">
+                        <Link 
+                            to="/#designs" 
+                            onClick={handleDesignsClick}
+                            className="text-[13px] font-black text-luxury-charcoal hover:text-luxury-gold transition-colors uppercase tracking-[0.1em] relative group"
+                        >
                             Designs
-                            <span className="absolute -bottom-1.5 left-0 w-0 h-[2px] bg-blue-600 group-hover:w-full transition-all duration-300"></span>
+                            <span className="absolute -bottom-1.5 left-0 w-0 h-[2px] bg-luxury-gold group-hover:w-full transition-all duration-300"></span>
                         </Link>
                         {user && user.role === 'admin' && (
-                            <Link to="/admin" className="text-[13px] font-black text-slate-900 hover:text-blue-600 transition-colors uppercase tracking-[0.1em] relative group">
+                            <Link to="/admin" className="text-[13px] font-black text-luxury-charcoal hover:text-luxury-gold transition-colors uppercase tracking-[0.1em] relative group">
                                 Admin
-                                <span className="absolute -bottom-1.5 left-0 w-0 h-[2px] bg-blue-600 group-hover:w-full transition-all duration-300"></span>
+                                <span className="absolute -bottom-1.5 left-0 w-0 h-[2px] bg-luxury-gold group-hover:w-full transition-all duration-300"></span>
                             </Link>
                         )}
                     </div>
@@ -132,10 +157,10 @@ const Navigation = () => {
                     <div className="flex items-center gap-3">
                         {/* Cart */}
                         {(!user || user.role !== 'admin') && (
-                            <Link to="/cart" className="relative p-2.5 rounded-full hover:bg-slate-50 transition-all text-slate-700 hover:text-blue-600 active:scale-90">
+                            <Link to="/cart" className="relative p-2.5 rounded-full hover:bg-slate-50 transition-all text-slate-700 hover:text-luxury-gold active:scale-90">
                                 <FaShoppingCart size={20} />
                                 {cartItems.length > 0 && (
-                                    <span className="absolute top-1 right-1 bg-blue-600 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full ring-[3px] ring-white">
+                                    <span className="absolute top-1 right-1 bg-luxury-gold text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full ring-[3px] ring-white">
                                         {cartItems.length}
                                     </span>
                                 )}
@@ -232,7 +257,7 @@ const Navigation = () => {
                                 )}
                             </div>
                         ) : (
-                            <Link to="/login" className="px-6 py-2.5 rounded-full text-xs font-black text-white bg-slate-900 hover:bg-blue-600 transition-all active:scale-95 shadow-lg shadow-slate-200 uppercase tracking-widest">
+                            <Link to="/login" className="px-6 py-2.5 rounded-full text-xs font-black text-white bg-luxury-charcoal hover:bg-luxury-gold transition-all active:scale-95 shadow-lg shadow-luxury-charcoal/20 uppercase tracking-widest">
                                 Sign In
                             </Link>
                         )}
@@ -281,39 +306,28 @@ function App() {
                                     <OrderSuccess />
                                 </ProtectedRoute>
                             } />
+                            <Route path="/quick-buy/:id" element={
+                                <ProtectedRoute>
+                                    <QuickBuy />
+                                </ProtectedRoute>
+                            } />
 
-                            {/* Admin Routes */}
-                            <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-                            <Route path="/admin/dashboard" element={
+                            {/* Admin Routes Wrapped in Layout */}
+                            <Route path="/admin" element={
                                 <ProtectedRoute adminOnly={true}>
-                                    <AdminDashboard />
+                                    <AdminLayout />
                                 </ProtectedRoute>
-                            } />
-                            <Route path="/admin/create-template" element={
-                                <ProtectedRoute adminOnly={true}>
-                                    <CreateTemplate />
-                                </ProtectedRoute>
-                            } />
-                            <Route path="/admin/orders" element={
-                                <ProtectedRoute adminOnly={true}>
-                                    <AdminOrders />
-                                </ProtectedRoute>
-                            } />
-                            <Route path="/admin/categories" element={
-                                <ProtectedRoute adminOnly={true}>
-                                    <AdminCategories />
-                                </ProtectedRoute>
-                            } />
-                            <Route path="/admin/users" element={
-                                <ProtectedRoute adminOnly={true}>
-                                    <AdminUsers />
-                                </ProtectedRoute>
-                            } />
-                            <Route path="/admin/edit-template/:id" element={
-                                <ProtectedRoute adminOnly={true}>
-                                    <CreateTemplate />
-                                </ProtectedRoute>
-                            } />
+                            }>
+                                <Route index element={<Navigate to="dashboard" replace />} />
+                                <Route path="dashboard" element={<AdminDashboard />} />
+                                <Route path="products" element={<AdminProducts />} />
+                                <Route path="create-template" element={<CreateTemplate />} />
+                                <Route path="orders" element={<AdminOrders />} />
+                                <Route path="categories" element={<AdminCategories />} />
+                                <Route path="users" element={<AdminUsers />} />
+                                <Route path="edit-template/:id" element={<CreateTemplate />} />
+                                <Route path="settings" element={<AdminSettings />} />
+                            </Route>
                         </Routes>
                     </div>
                 </Router>

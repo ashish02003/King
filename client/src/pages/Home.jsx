@@ -363,6 +363,7 @@ const FLOAT_ITEMS = [
 const Home = () => {
     const [templates, setTemplates] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [showAllCategories, setShowAllCategories] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -371,8 +372,11 @@ const Home = () => {
                     axios.get(`${API_BASE}/templates`),
                     axios.get(`${API_BASE}/categories`)
                 ]);
-                setTemplates(templatesRes.data);
-                setCategories(categoriesRes.data);
+                const catsInStock = categoriesRes.data.filter(cat => cat.stock > 0);
+                const inStockCatNames = catsInStock.map(c => c.name);
+                
+                setTemplates(templatesRes.data.filter(t => inStockCatNames.includes(t.category)));
+                setCategories(catsInStock);
             } catch (error) {
                 console.error(error);
             }
@@ -413,7 +417,7 @@ const Home = () => {
     }, {});
 
     return (
-        <div className="bg-white min-h-screen w-full max-w-[100vw] overflow-x-hidden selection:bg-blue-600 selection:text-white">
+        <div className="bg-white min-h-screen w-full max-w-[100vw] overflow-x-hidden selection:bg-luxury-gold selection:text-white">
 
 
 
@@ -459,7 +463,7 @@ const Home = () => {
                     100% { background-position: 200% 0; }
                 }
                 .text-shimmer {
-                    background: linear-gradient(90deg, #2563eb, #60a5fa, #2563eb);
+                    background: linear-gradient(90deg, #BFA75D, #D9C5A3, #BFA75D);
                     background-size: 200% auto;
                     -webkit-background-clip: text;
                     -webkit-text-fill-color: transparent;
@@ -525,18 +529,18 @@ const Home = () => {
 
                 /* Trust pill */
                 .pc-trust { transition:transform .3s, box-shadow .3s, border-color .3s !important; }
-                .pc-trust:hover { transform:translateY(-3px) !important; box-shadow:0 8px 24px rgba(37,99,235,.14) !important; border-color:#2563eb !important; }
+                .pc-trust:hover { transform:translateY(-3px) !important; box-shadow:0 8px 24px rgba(191,167,93,.14) !important; border-color:#BFA75D !important; }
 
                 /* Footer link */
                 .pc-fl { display:flex; align-items:center; gap:0; transition:color .25s, gap .3s; }
-                .pc-fl::before { content:''; width:0; height:1.5px; background:#2563eb; transition:width .3s; flex-shrink:0; }
+                .pc-fl::before { content:''; width:0; height:1.5px; background:#BFA75D; transition:width .3s; flex-shrink:0; }
                 .pc-fl:hover { gap:10px !important; }
                 .pc-fl:hover::before { width:14px; }
 
                 /* Search bar focus ring */
                 .pc-search-wrap:focus-within {
-                    border-color:#2563eb !important;
-                    box-shadow:0 0 0 4px rgba(37,99,235,0.1) !important;
+                    border-color:#BFA75D !important;
+                    box-shadow:0 0 0 4px rgba(191,167,93,0.1) !important;
                 }
 
                 @keyframes drift {
@@ -569,18 +573,20 @@ const Home = () => {
             {/* ══════════════════════════════════════════════════════
                 1. Premium Hero Section - Refined & Search-Free
             ══════════════════════════════════════════════════════ */}
-            <div className="relative overflow-hidden bg-[#f0f4f8] pt-12 pb-24 md:pt-28 md:pb-40">
+            <div className="relative overflow-hidden bg-luxury-cream pt-12 pb-24 md:pt-28 md:pb-40">
                 {/* Background Blobs */}
-                <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[600px] h-[600px] bg-blue-100/50 rounded-full blur-[100px] animate-blob"></div>
-                <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-[500px] h-[500px] bg-indigo-100/50 rounded-full blur-[100px] animate-blob" style={{ animationDelay: '2s' }}></div>
+                <div className="luxury-blob bg-[#2D5A27]/20 top-[-10%] left-[-5%] animate-float"></div>
+                <div className="luxury-blob bg-[#BFA75D]/15 bottom-[-5%] right-[-10%] animate-float" style={{ animationDelay: '-10s' }}></div>
+                <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[600px] h-[600px] bg-luxury-gold-light/20 rounded-full blur-[100px] animate-blob"></div>
+                <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-[500px] h-[500px] bg-luxury-blue-light/10 rounded-full blur-[100px] animate-blob" style={{ animationDelay: '2s' }}></div>
 
                 <div className="container mx-auto px-6 max-w-7xl relative z-10">
                     <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
 
                         {/* Left: Text Content */}
                         <div className="lg:w-1/2 flex flex-col items-start text-center lg:text-left">
-                            <span className="rise rise-1 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white shadow-sm border border-blue-50 text-blue-600 text-[11px] font-black uppercase tracking-[0.2em] mb-8 mx-auto lg:mx-0">
-                                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                            <span className="rise rise-1 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white shadow-sm border border-luxury-gold-light/20 text-[#2D5A27] text-[11px] font-black uppercase tracking-[0.2em] mb-8 mx-auto lg:mx-0">
+                                <span className="w-2 h-2 rounded-full bg-[#2D5A27] animate-pulse"></span>
                                 New Arrival: Premium Photo Frames
                             </span>
 
@@ -596,10 +602,10 @@ const Home = () => {
                             </p>
 
                             <div className="rise rise-4 flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                                <button className="bg-slate-900 text-white px-10 py-5 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-blue-600 transition-all hover:translate-y-[-4px] active:scale-95 shadow-xl shadow-slate-200">
+                                <button className="bg-[#2D5A27] text-white px-10 py-5 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-[#23471e] transition-all hover:translate-y-[-4px] active:scale-95 shadow-xl shadow-luxury-green-dark/20">
                                     Start Creating
                                 </button>
-                                <button className="bg-white text-slate-900 border-2 border-slate-100 px-10 py-5 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-slate-50 transition-all hover:translate-y-[-4px] active:scale-95">
+                                <button className="bg-white text-luxury-charcoal border-2 border-luxury-cream px-10 py-5 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-luxury-cream transition-all hover:translate-y-[-4px] active:scale-95">
                                     Browse Frames
                                 </button>
                             </div>
@@ -628,7 +634,7 @@ const Home = () => {
                                     </div>
 
                                     {/* Overlay Dynamic Elements - Moved inward and made MUCH more visible as requested */}
-                                    <div className="absolute -top-14 right-4 md:right-8 bg-white p-7 rounded-[32px] shadow-2xl shadow-blue-900/10 border border-slate-50 max-w-[170px] animate-bounce z-20" style={{ animationDuration: '4s' }}>
+                                    <div className="absolute -top-14 right-4 md:right-8 bg-white p-7 rounded-[32px] shadow-2xl shadow-luxury-gold/10 border border-slate-50 max-w-[170px] animate-bounce z-20" style={{ animationDuration: '4s' }}>
                                         <div className="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 mb-4 shadow-inner">
                                             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
                                         </div>
@@ -644,10 +650,10 @@ const Home = () => {
                                     <div className="absolute -bottom-10 -left-6 md:-left-12 bg-slate-900 p-8 rounded-[32px] shadow-2xl shadow-slate-900/30 max-w-[210px] hidden md:block z-20">
                                         <p className="text-white text-sm font-semibold leading-relaxed opacity-95">"The acrylic finish on the frames and mug is stunning!"</p>
                                         <div className="mt-5 flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 overflow-hidden border-2 border-white/20"></div>
+                                            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-luxury-gold to-luxury-blue-light overflow-hidden border-2 border-white/20"></div>
                                             <div>
                                                 <p className="text-white text-[11px] font-bold">Raghav M.</p>
-                                                <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Verified Buyer</span>
+                                                <span className="text-[9px] font-black text-luxury-gold uppercase tracking-widest">Verified Buyer</span>
                                             </div>
                                         </div>
                                     </div>
@@ -655,7 +661,7 @@ const Home = () => {
                             </div>
 
                             {/* Decorative Glows */}
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[130%] h-[130%] bg-blue-500/10 rounded-full blur-[140px] -z-10 animate-pulse"></div>
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[130%] h-[130%] bg-luxury-gold/10 rounded-full blur-[140px] -z-10 animate-pulse"></div>
                             <div className="absolute top-0 right-0 w-32 h-32 bg-rose-400/10 rounded-full blur-[60px] -z-10"></div>
                         </div>
 
@@ -666,7 +672,7 @@ const Home = () => {
             {/* ══════════════════════════════════════════════════════
                 ANIMATED SEARCH SECTION — dark bg with floating product icons
             ══════════════════════════════════════════════════════ */}
-            <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#0e1a2e 0%,#1a3050 40%,#0d2040 100%)', padding: '72px 0 80px' }}>
+            <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg, #001F3F 0%, #0F172A 100%)', padding: '72px 0 80px' }}>
                 {/* Floating product emojis */}
                 {FLOAT_ITEMS.map((item, i) => (
                     <div key={i} className="fi" style={{ left: `${item.x}%`, top: `${item.y}%`, fontSize: item.size, '--dur': `${item.dur}s`, '--dly': `${item.delay}s` }}>
@@ -674,8 +680,8 @@ const Home = () => {
                     </div>
                 ))}
                 {/* Glow orbs */}
-                <div style={{ position: 'absolute', width: 300, height: 300, left: '8%', top: '-30%', borderRadius: '50%', background: 'rgba(37,99,235,.15)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-                <div style={{ position: 'absolute', width: 260, height: 260, right: '5%', bottom: '-20%', borderRadius: '50%', background: 'rgba(96,165,250,.1)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', width: 300, height: 300, left: '8%', top: '-30%', borderRadius: '50%', background: 'rgba(191,167,93,.15)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', width: 260, height: 260, right: '5%', bottom: '-20%', borderRadius: '50%', background: 'rgba(74,106,138,.1)', filter: 'blur(60px)', pointerEvents: 'none' }} />
                 {/* Dot grid */}
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle,rgba(255,255,255,.035) 1px,transparent 1px)', backgroundSize: '28px 28px', pointerEvents: 'none' }} />
 
@@ -685,7 +691,7 @@ const Home = () => {
                     <h2 className="fraunces" style={{ fontSize: 'clamp(28px,4vw,54px)', fontWeight: 900, fontStyle: 'italic', color: '#fff', marginBottom: 6, letterSpacing: '-1.5px', lineHeight: 1.1 }}>
                         We Turn Your Memories
                     </h2>
-                    <h2 className="fraunces" style={{ fontSize: 'clamp(28px,4vw,54px)', fontWeight: 900, fontStyle: 'italic', color: '#60a5fa', marginBottom: 40, letterSpacing: '-1.5px', lineHeight: 1.1 }}>
+                    <h2 className="fraunces" style={{ fontSize: 'clamp(28px,4vw,54px)', fontWeight: 900, fontStyle: 'italic', color: '#BFA75D', marginBottom: 40, letterSpacing: '-1.5px', lineHeight: 1.1 }}>
                         Into Products
                     </h2>
 
@@ -697,9 +703,9 @@ const Home = () => {
                             placeholder="Search for Love Story Frames, Wallet Cards etc."
                             style={{ flex: 1, border: 'none', outline: 'none', fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 14, fontWeight: 400, color: '#1e293b', background: 'transparent', padding: '12px 16px' }}
                         />
-                        <button style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 100, padding: '12px 28px', fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0, fontFamily: "'Plus Jakarta Sans',sans-serif", transition: 'background .25s' }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
-                            onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}>
+                        <button style={{ background: '#BFA75D', color: '#fff', border: 'none', borderRadius: 100, padding: '12px 28px', fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0, fontFamily: "'Plus Jakarta Sans',sans-serif", transition: 'background .25s' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#001F3F'}
+                            onMouseLeave={e => e.currentTarget.style.background = '#BFA75D'}>
                             Search
                         </button>
                     </div>
@@ -709,7 +715,7 @@ const Home = () => {
                         {['📱 Phone Cases', '☕ Photo Mugs', '👕 T-Shirts', '🖼️ Wall Art', '🎁 Gift Sets'].map(tag => (
                             <button key={tag}
                                 style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.14)', color: 'rgba(255,255,255,.72)', fontSize: 12, fontWeight: 600, padding: '7px 16px', borderRadius: 100, cursor: 'pointer', backdropFilter: 'blur(8px)', transition: 'all .25s', fontFamily: "'Plus Jakarta Sans',sans-serif" }}
-                                onMouseEnter={e => { e.target.style.background = 'rgba(37,99,235,.35)'; e.target.style.borderColor = '#60a5fa'; e.target.style.color = '#fff'; }}
+                                onMouseEnter={e => { e.target.style.background = 'rgba(191,167,93,.35)'; e.target.style.borderColor = '#BFA75D'; e.target.style.color = '#fff'; }}
                                 onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,.08)'; e.target.style.borderColor = 'rgba(255,255,255,.14)'; e.target.style.color = 'rgba(255,255,255,.72)'; }}>
                                 {tag}
                             </button>
@@ -726,7 +732,7 @@ const Home = () => {
                         ['Photo Albums', 'Phone Cases', 'Custom Mugs', 'Hoodies', 'Tote Bags', 'Wall Art', 'Notebooks', 'Fridge Magnets', 'Name Pens', 'Pillows'].map((item, i) => (
                             <span key={`${r}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '0 20px', flexShrink: 0 }}>
                                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.25em', textTransform: 'uppercase', color: '#94a3b8', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{item}</span>
-                                <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#2563eb', flexShrink: 0, opacity: .5 }} />
+                                <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#BFA75D', flexShrink: 0, opacity: .5 }} />
                             </span>
                         ))
                     )}
@@ -739,9 +745,9 @@ const Home = () => {
             <div className="container mx-auto px-6 py-16 md:py-24 max-w-7xl">
                 <div data-sr className="flex flex-col md:flex-row items-baseline justify-between mb-14 pb-6 border-b border-slate-100">
                     <div>
-                        <span className="text-blue-600 text-[10px] font-black uppercase tracking-[0.3em] mb-3 block" style={{ fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Trending Now</span>
+                        <span className="text-luxury-gold text-[10px] font-black uppercase tracking-[0.3em] mb-3 block" style={{ fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Trending Now</span>
                         <h2 className="fraunces" style={{ fontSize: 'clamp(30px,4vw,54px)', fontWeight: 900, fontStyle: 'italic', color: '#0f172a', letterSpacing: '-1.5px', lineHeight: 1.05 }}>
-                            Our Most <span style={{ color: '#2563eb' }}>Loved</span> Prints
+                            Our Most <span style={{ color: '#BFA75D' }}>Loved</span> Prints
                         </h2>
                     </div>
                     <a href="#" style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: '#0f172a', textDecoration: 'none', border: '1.5px solid #e2e8f0', borderRadius: 100, padding: '11px 26px', display: 'inline-flex', alignItems: 'center', gap: 8, transition: 'border-color .25s', fontFamily: "'Plus Jakarta Sans',sans-serif", marginTop: 16 }}
@@ -760,18 +766,18 @@ const Home = () => {
                                     className="w-full h-full object-cover"
                                     alt={product.name}
                                 />
-                                <div style={{ position: 'absolute', top: 0, left: 0, background: '#2563eb', color: '#fff', fontSize: 9, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', padding: '6px 13px', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+                                <div style={{ position: 'absolute', top: 0, left: 0, background: '#001F3F', color: '#fff', fontSize: 9, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', padding: '6px 13px', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                     Best Seller
                                 </div>
                                 <div className="pc-card-overlay">
-                                    <button style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 100, padding: '11px 22px', fontSize: 11, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+                                    <button style={{ background: '#2D5A27', color: '#fff', border: 'none', borderRadius: 100, padding: '11px 22px', fontSize: 11, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                         Customize Now
                                     </button>
                                 </div>
                             </div>
                             <div className="mt-5 text-center px-2">
                                 <h3 style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.05em', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{product.name}</h3>
-                                <div className="fraunces" style={{ fontSize: 26, fontWeight: 900, color: '#2563eb', fontStyle: 'italic' }}>₹{product.basePrice}</div>
+                                <div className="fraunces" style={{ fontSize: 26, fontWeight: 900, color: '#2D5A27', fontStyle: 'italic' }}>₹{product.basePrice}</div>
                             </div>
                         </Link>
                     ))}
@@ -800,137 +806,168 @@ const Home = () => {
             </div>
 
             {/* ══════════════════════════════════════════════════════
-                3. Collection Section — Grid of clean boxes
+                3. Popular Products Section — Screenshot Style
             ══════════════════════════════════════════════════════ */}
-            <div className="container mx-auto px-6 py-12 max-w-7xl">
-                <div className={`relative overflow-hidden group/coll py-16 px-6 md:px-12 rounded-[3.5rem] bg-indigo-100/80`}>
-                    <div data-sr className="flex flex-row items-center justify-between mb-12 px-2 md:px-4 relative">
-                        <div>
-                            <span className="text-blue-600 text-[10px] font-black uppercase tracking-[0.3em] mb-2 block" style={{ fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Browse</span>
-                            <h2 className="fraunces" style={{ fontSize: 'clamp(24px, 4vw, 38px)', fontWeight: 900, textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.02em' }}>
-                                Shop <span className="text-blue-600">Collections</span>
-                            </h2>
-                        </div>
-                        <Link to="/mobile-cases"
-                            className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] px-6 md:px-8 py-2.5 md:py-3 bg-white rounded-full shadow-sm hover:shadow-md transition-all border border-slate-100 text-blue-700"
-                        >
-                            See All (8) &rarr;
-                        </Link>
+            <div className="container mx-auto px-4 py-8 max-w-7xl">
+                <div className={`relative overflow-hidden pt-10 pb-12 px-4 md:px-8 rounded-[3rem] bg-[#FDF6E9] border border-[#F5E6D3]/50 shadow-[0_15px_40px_-15px_rgba(126,107,78,0.1)]`}>
+                    <div className="flex flex-col items-center mb-6 relative z-10">qwa
+                        <h2 className="fraunces text-center" style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 900, color: '#7E6B4E', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+                            Popular Products
+                        </h2>
+                        <div className="w-16 h-[1.5px] bg-[#7E6B4E]/30 mt-4"></div>
                     </div>
 
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                        {categories.slice(0, 8).map((cat, i) => (
-                            <div key={cat._id} data-sr data-delay={i * 55}>
-                                <CategoryCard
-                                    title={cat.name}
-                                    image={cat.image || 'https://via.placeholder.com/150'}
-                                    link={`/category/${cat.name}`}
-                                    bgClass="bg-[#ffffff]"
-                                    className="hover:scale-[1.02] transition-transform"
-                                />
+                    <div className="relative group/scroll">
+                        <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5 transition-all duration-700 ${showAllCategories ? 'max-h-[5000px] opacity-100' : 'max-h-[800px]'}`}>
+                            {(showAllCategories ? categories : categories.slice(0, 6)).map((cat, i) => (
+                                <Link
+                                    key={cat._id}
+                                    to={`/category/${cat.name}`}
+                                    data-sr={!showAllCategories}
+                                    data-delay={i * 40}
+                                    className="group flex flex-col items-center transition-all duration-500 hover:-translate-y-2"
+                                >
+                                    <div className="w-full aspect-square rounded-[2rem] overflow-hidden bg-white shadow-[0_10px_30px_-5px_rgba(0,0,0,0.05)] border border-[#F5E6D3] group-hover:shadow-[0_20px_50px_-10px_rgba(126,107,78,0.15)] group-hover:border-[#7E6B4E]/20 transition-all duration-500 p-0">
+                                        <img
+                                            src={cat.image || 'https://via.placeholder.com/400'}
+                                            alt={cat.name}
+                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.src = `https://placehold.co/400x400/FDF6E9/7E6B4E?text=${cat.name.replace(' ', '+')}`;
+                                            }}
+                                        />
+                                    </div>
+                                    <h3 className="mt-4 text-[13px] font-[800] text-[#1e293b] tracking-[0.05em] group-hover:text-[#7E6B4E] transition-colors text-center font-sans">
+                                        {cat.name}
+                                    </h3>
+                                </Link>
+                            ))}
+                        </div>
+
+                        {categories.length > 6 && (
+                            <div className="mt-8 flex justify-center">
+                                <button
+                                    onClick={() => setShowAllCategories(!showAllCategories)}
+                                    className="px-10 py-4 bg-white hover:bg-[#7E6B4E] hover:text-white border border-[#7E6B4E]/20 text-[#7E6B4E] rounded-full text-[11px] font-black uppercase tracking-[0.2em] transition-all shadow-sm hover:shadow-xl hover:-translate-y-1"
+                                >
+                                    {showAllCategories ? 'Show Less' : 'Show All Categories'}
+                                </button>
                             </div>
-                        ))}
+                        )}
                     </div>
+
+                    {/* Decorative subtle texture */}
+                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#7E6B4E 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
                 </div>
             </div>
 
-
+            <div className="container mx-auto px-6 mb-4">
+                <div className="h-[1px] w-full bg-slate-300"></div>
+            </div>
 
 
             {/* ══════════════════════════════════════════════════════
                 4. Products by Category — Redesigned with Themes
             ══════════════════════════════════════════════════════ */}
-            <div className="container mx-auto px-6 space-y-12">
+            <div className="container mx-auto px-6 space-y-4">
 
 
-                {Object.entries(templatesByCategory).map(([categoryName, categoryTemplates]) => {
+                {Object.entries(templatesByCategory).map(([categoryName, categoryTemplates], index, array) => {
                     const theme = {
-                        'Mobile Cases': { bg: 'bg-blue-100', text: 'text-blue-700', icon: '📱' },
-                        'Custom Mugs': { bg: 'bg-orange-100', text: 'text-orange-700', icon: '☕' },
-                        'T-Shirts': { bg: 'bg-indigo-100', text: 'text-indigo-700', icon: '👕' },
-                        'Photo Frames': { bg: 'bg-rose-100', text: 'text-rose-700', icon: '🖼️' },
-                        'Keychains': { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: '🔑' },
-                        'Wall Art': { bg: 'bg-sky-100', text: 'text-sky-700', icon: '🎨' }
-                    }[categoryName] || { bg: 'bg-slate-100', text: 'text-slate-700', icon: '✨' };
+                        'Mobile Cases': { bg: 'bg-luxury-blue-light/10', text: 'text-luxury-blue-dark', icon: '📱' },
+                        'Custom Mugs': { bg: 'bg-luxury-gold-light/10', text: 'text-luxury-gold', icon: '☕' },
+                        'T-Shirts': { bg: 'bg-luxury-purple-light/10', text: 'text-luxury-purple', icon: '👕' },
+                        'Photo Frames': { bg: 'bg-luxury-red-light/10', text: 'text-luxury-red', icon: '🖼️' },
+                        'Keychains': { bg: 'bg-luxury-green-light/10', text: 'text-luxury-green', icon: '🔑' },
+                        'Wall Art': { bg: 'bg-luxury-slate/10', text: 'text-luxury-charcoal', icon: '🎨' }
+                    }[categoryName] || { bg: 'bg-luxury-cream', text: 'text-luxury-charcoal', icon: '✨' };
 
 
                     return (
-                        <div key={categoryName} className={`relative overflow-hidden group/section py-16 px-6 md:px-12 rounded-[3.5rem] ${theme.bg}`}>
-                            {/* Large Animated Background Text */}
-                            <div className="bg-text-slide fraunces">
-                                {categoryName} {categoryName}
-                            </div>
+                        <div key={categoryName}>
+                            <div className={`relative overflow-hidden group/section py-8 px-6 md:px-12 rounded-[3.5rem] ${theme.bg}`}>
+                                {/* Large Animated Background Text */}
+                                <div className="bg-text-slide fraunces">
+                                    {categoryName} {categoryName}
+                                </div>
 
 
-                            {/* Floating Decorative Icons */}
-                            <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
-                                <div className="bg-drift absolute top-10 right-[10%] text-6xl opacity-[0.07]">{theme.icon}</div>
-                                <div className="bg-drift absolute bottom-20 left-[5%] text-8xl opacity-[0.05]" style={{ animationDelay: '-4s' }}>{theme.icon}</div>
-                                <div className="bg-drift absolute top-1/2 left-1/2 text-9xl opacity-[0.03]" style={{ animationDelay: '-8s' }}>{theme.icon}</div>
-                            </div>
+                                {/* Floating Decorative Icons */}
+                                <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+                                    <div className="bg-drift absolute top-10 right-[10%] text-6xl opacity-[0.07]">{theme.icon}</div>
+                                    <div className="bg-drift absolute bottom-20 left-[5%] text-8xl opacity-[0.05]" style={{ animationDelay: '-4s' }}>{theme.icon}</div>
+                                    <div className="bg-drift absolute top-1/2 left-1/2 text-9xl opacity-[0.03]" style={{ animationDelay: '-8s' }}>{theme.icon}</div>
+                                </div>
 
-                            {/* Decorative elements - subtle glows to complement section bg */}
-                            <div className="absolute top-0 left-1/4 w-72 h-72 bg-white/60 blur-[100px] -z-10"></div>
-
-
-
-
-                            <div data-sr className="flex flex-row items-center justify-between mb-12 px-2 md:px-4 relative">
-                                <h2 className="fraunces" style={{ fontSize: 'clamp(24px, 4vw, 38px)', fontWeight: 900, textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.02em', textAlign: 'left' }}>
-                                    {categoryName}
-                                </h2>
-                                <Link
-                                    to={`/category/${categoryName}`}
-                                    className={`text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] px-6 md:px-8 py-2.5 md:py-3 bg-white rounded-full shadow-sm hover:shadow-md transition-all border border-slate-100 ${theme.text}`}
-                                >
-                                    Browse All &rarr;
-                                </Link>
-                            </div>
+                                {/* Decorative elements - subtle glows to complement section bg */}
+                                <div className="absolute top-0 left-1/4 w-72 h-72 bg-white/60 blur-[100px] -z-10"></div>
 
 
 
-                            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-8 px-4">
-                                {categoryTemplates.slice(0, 6).map((template, idx) => (
+
+                                <div data-sr className="flex flex-row items-center justify-between mb-12 px-2 md:px-4 relative">
+                                    <h2 className="fraunces" style={{ fontSize: 'clamp(24px, 4vw, 38px)', fontWeight: 900, textTransform: 'uppercase', color: '#0f172a', letterSpacing: '0.02em', textAlign: 'left' }}>
+                                        {categoryName}
+                                    </h2>
                                     <Link
-                                        key={template._id}
-                                        to={`/product/${template._id}`}
-                                        className="group block"
-                                        style={{ textDecoration: 'none', color: 'inherit' }}
+                                        to={`/category/${categoryName}`}
+                                        className={`text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] px-6 md:px-8 py-2.5 md:py-3 bg-white rounded-full shadow-sm hover:shadow-md transition-all border border-slate-100 ${theme.text}`}
                                     >
-                                        <div data-sr data-delay={idx * 60}>
-                                            <div className="pc-card aspect-[4/5] bg-white shadow-xl shadow-rose-900/5 border-none" style={{ borderRadius: '1.5rem' }}>
+                                        Browse All &rarr;
+                                    </Link>
+                                </div>
 
-                                                <img
-                                                    src={template.demoImageUrl || template.previewImage || template.backgroundImageUrl}
-                                                    alt={template.name}
-                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
 
-                                                    onError={(e) => {
-                                                        e.target.onerror = null;
-                                                        e.target.src = 'https://placehold.co/400x400/f8fafc/2563eb?text=' + template.name.replace(' ', '+');
-                                                    }}
-                                                />
-                                                <div className="pc-card-overlay">
-                                                    <span className="bg-white text-slate-900 px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl transform translate-y-6 group-hover:translate-y-0 transition-all duration-300">
-                                                        Customize
-                                                    </span>
+
+                                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-8 px-4">
+                                    {categoryTemplates.slice(0, 6).map((template, idx) => (
+                                        <Link
+                                            key={template._id}
+                                            to={`/product/${template._id}`}
+                                            className="group block"
+                                            style={{ textDecoration: 'none', color: 'inherit' }}
+                                        >
+                                            <div data-sr data-delay={idx * 60}>
+                                                <div className="pc-card aspect-[4/5] bg-white shadow-xl shadow-rose-900/5 border-none" style={{ borderRadius: '1.5rem' }}>
+
+                                                    <img
+                                                        src={template.demoImageUrl || template.previewImage || template.backgroundImageUrl}
+                                                        alt={template.name}
+                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+
+                                                        onError={(e) => {
+                                                            e.target.onerror = null;
+                                                            e.target.src = 'https://placehold.co/400x400/f8fafc/BFA75D?text=' + template.name.replace(' ', '+');
+                                                        }}
+                                                    />
+                                                    <div className="pc-card-overlay">
+                                                        <span className="bg-[#2D5A27] text-white px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl transform translate-y-6 group-hover:translate-y-0 transition-all duration-300">
+                                                            Customize
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="mt-6 px-1">
-                                                <h3 style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 6, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
-                                                    {template.name}
-                                                </h3>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="fraunces text-2xl font-black text-slate-900">₹{template.basePrice + (template.packingCharges || 0)}</span>
-                                                    <div className="w-10 h-10 rounded-2xl border border-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:border-blue-600 group-hover:text-white transition-all duration-300">
-                                                        <FaChevronRight size={12} />
+                                                <div className="mt-6 px-1">
+                                                    <h3 style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 6, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+                                                        {template.name}
+                                                    </h3>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="fraunces text-2xl font-black text-luxury-green-dark">₹{template.basePrice + (template.packingCharges || 0)}</span>
+                                                        <div className="w-10 h-10 rounded-2xl border border-luxury-cream flex items-center justify-center text-slate-400 group-hover:bg-luxury-gold group-hover:border-luxury-gold group-hover:text-white transition-all duration-300">
+                                                            <FaChevronRight size={12} />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </Link>
-                                ))}
+                                        </Link>
+                                    ))}
+                                </div>
                             </div>
+                            {index < array.length - 1 && (
+                                <div className="mt-4">
+                                    <div className="h-[1px] w-full bg-slate-300"></div>
+                                </div>
+                            )}
                         </div>
                     );
                 })}
@@ -940,11 +977,11 @@ const Home = () => {
             {/* ══════════════════════════════════════════════════════
                 5. Testimonials Section — Before Footer
             ══════════════════════════════════════════════════════ */}
-            <div className="bg-[#0b1e3b] text-white overflow-hidden relative" style={{ padding: '96px 0' }}>
+            <div className="bg-luxury-blue-dark text-white overflow-hidden relative" style={{ padding: '96px 0' }}>
                 {/* Bg blobs */}
                 <div className="absolute top-0 left-0 w-full h-full opacity-10">
-                    <div className="absolute top-10 left-10 w-64 h-64 bg-blue-500 rounded-full blur-[100px]"></div>
-                    <div className="absolute bottom-10 right-10 w-64 h-64 bg-indigo-500 rounded-full blur-[100px]"></div>
+                    <div className="absolute top-10 left-10 w-64 h-64 bg-luxury-gold rounded-full blur-[100px]"></div>
+                    <div className="absolute bottom-10 right-10 w-64 h-64 bg-luxury-blue-light rounded-full blur-[100px]"></div>
                 </div>
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle,rgba(255,255,255,.022) 1px,transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none' }} />
 
@@ -952,7 +989,7 @@ const Home = () => {
                     <div data-sr className="flex flex-col items-center text-center mb-14">
                         <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.35em', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', marginBottom: 16, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Customer Proof</span>
                         <h2 className="fraunces" style={{ fontSize: 'clamp(30px,4vw,54px)', fontWeight: 900, fontStyle: 'italic', color: '#fff', letterSpacing: '-1.5px', lineHeight: 1.1, marginBottom: 8 }}>
-                            Loved by <span style={{ color: '#60a5fa' }}>10,000+</span> Happy Creators
+                            Loved by <span style={{ color: '#BFA75D' }}>10,000+</span> Happy Creators
                         </h2>
                         <p style={{ color: 'rgba(148,163,184,.7)', fontWeight: 400, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Join our growing community of customized product lovers</p>
                     </div>
@@ -972,12 +1009,12 @@ const Home = () => {
                                         </svg>
                                     ))}
                                 </div>
-                                <div className="fraunces" style={{ fontSize: 52, color: '#60a5fa', lineHeight: .7, marginBottom: 10, fontStyle: 'italic', opacity: .4 }}>"</div>
+                                <div className="fraunces" style={{ fontSize: 52, color: '#BFA75D', lineHeight: .7, marginBottom: 10, fontStyle: 'italic', opacity: .4 }}>"</div>
                                 <p className="fraunces" style={{ fontSize: 18, fontWeight: 300, fontStyle: 'italic', color: 'rgba(255,255,255,.65)', lineHeight: 1.8, marginBottom: 28 }}>
                                     {rev.text}
                                 </p>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, borderTop: '1px solid rgba(255,255,255,.07)', paddingTop: 22 }}>
-                                    <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(37,99,235,.15)', border: '1.5px solid rgba(37,99,235,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: '#60a5fa', flexShrink: 0, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+                                    <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(191,167,93,.15)', border: '1.5px solid rgba(191,167,93,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: '#BFA75D', flexShrink: 0, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                         {rev.name.charAt(0)}
                                     </div>
                                     <div>
@@ -1003,7 +1040,7 @@ const Home = () => {
                             <h2 className="fraunces" style={{ fontSize: 32, fontWeight: 900, fontStyle: 'italic', color: '#0f172a', letterSpacing: '-1px', marginBottom: 6 }}>
                                 Mimitiinaa
                             </h2>
-                            <div style={{ width: 28, height: 3, background: '#2563eb', borderRadius: 100, marginBottom: 18 }} />
+                            <div style={{ width: 28, height: 3, background: '#BFA75D', borderRadius: 100, marginBottom: 18 }} />
                             <p style={{ fontSize: 13, fontWeight: 400, color: '#64748b', lineHeight: 1.9, maxWidth: 280, marginBottom: 26, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                 Quality custom products made for your special moments.
                                 Expertly printed and delivered with care.
@@ -1011,7 +1048,7 @@ const Home = () => {
                             <div className="flex gap-3">
                                 {[<FaTwitter size={13} />, <FaInstagram size={13} />, <FaWhatsapp size={13} />].map((icon, i) => (
                                     <a key={i} href="#" style={{ width: 38, height: 38, border: '1.5px solid #e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', textDecoration: 'none', transition: 'all .25s' }}
-                                        onMouseEnter={e => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#2563eb'; }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = '#BFA75D'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#BFA75D'; }}
                                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#e2e8f0'; }}>
                                         {icon}
                                     </a>
@@ -1021,7 +1058,7 @@ const Home = () => {
 
                         {/* Navigation */}
                         <div>
-                            <h3 style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.3em', textTransform: 'uppercase', color: '#2563eb', marginBottom: 22, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Navigation</h3>
+                            <h3 style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.3em', textTransform: 'uppercase', color: '#BFA75D', marginBottom: 22, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Navigation</h3>
                             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 14 }}>
                                 {[{ label: 'Home Page', to: '/' }, { label: 'Our Story', to: '/about' }, { label: 'Contact Support', to: '/contact' }, { label: 'My Account', to: '/profile' }].map((link, i) => (
                                     <li key={i}>
@@ -1033,11 +1070,11 @@ const Home = () => {
 
                         {/* Connect */}
                         <div>
-                            <h3 style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.3em', textTransform: 'uppercase', color: '#2563eb', marginBottom: 22, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Connect</h3>
+                            <h3 style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.3em', textTransform: 'uppercase', color: '#BFA75D', marginBottom: 22, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Connect</h3>
                             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 16 }}>
                                 {[{ icon: <FaMapMarkerAlt size={11} />, text: 'New Design HUB, India' }, { icon: <FaPhoneAlt size={11} />, text: '+91 98765 43210' }, { icon: <FaEnvelope size={11} />, text: 'hello@mimitiinaa.com' }].map((item, i) => (
                                     <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                                        <span style={{ color: '#2563eb', marginTop: 2, flexShrink: 0 }}>{item.icon}</span>
+                                        <span style={{ color: '#BFA75D', marginTop: 2, flexShrink: 0 }}>{item.icon}</span>
                                         <span style={{ fontSize: 13, fontWeight: 500, color: '#64748b', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{item.text}</span>
                                     </li>
                                 ))}
@@ -1048,14 +1085,14 @@ const Home = () => {
                         <div>
                             <div style={{ background: '#0f172a', padding: 32, borderRadius: 24, color: '#fff' }}>
                                 <h3 className="fraunces" style={{ fontSize: 22, fontWeight: 700, fontStyle: 'italic', marginBottom: 6 }}>Subscribe</h3>
-                                <div style={{ width: 24, height: 2, background: '#2563eb', borderRadius: 100, marginBottom: 16 }} />
+                                <div style={{ width: 24, height: 2, background: '#BFA75D', borderRadius: 100, marginBottom: 16 }} />
                                 <p style={{ fontSize: 10, color: '#475569', letterSpacing: '.2em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 18, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Get special offers</p>
                                 <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #1e293b', borderRadius: 100, overflow: 'hidden', padding: '4px 4px 4px 18px' }}>
                                     <input type="email" placeholder="Email address"
                                         style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 13, color: '#fff' }} />
-                                    <button style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 100, padding: '10px 20px', fontSize: 14, cursor: 'pointer', transition: 'background .25s' }}
-                                        onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
-                                        onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}>→</button>
+                                    <button style={{ background: '#BFA75D', color: '#fff', border: 'none', borderRadius: 100, padding: '10px 20px', fontSize: 14, cursor: 'pointer', transition: 'background .25s' }}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#001F3F'}
+                                        onMouseLeave={e => e.currentTarget.style.background = '#BFA75D'}>→</button>
                                 </div>
                             </div>
                         </div>

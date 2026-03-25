@@ -5,17 +5,59 @@
 @tailwind utilities;
 
 @layer base {
+    :root {
+        --lux-bg: #FFFFFF;
+        --lux-fg: #0F172A;
+        --lux-primary: #001F3F;
+        --lux-accent: #BFA75D;
+        --lux-border: #E2E8F0;
+        --lux-surface: #F8F5F0;
+
+        /* Screenshot Colors */
+        --lux-green: #2D5A27;
+        --lux-blue: #001F3F;
+        --lux-red: #700000;
+        --lux-gold: #7E6B4E;
+        --lux-purple: #3A1F40;
+    }
+
     body {
-        font-family: 'Inter', sans-serif;
-        @apply text-slate-900 bg-white antialiased;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        @apply text-luxury-charcoal bg-white antialiased;
+        background-color: var(--lux-bg);
+        color: var(--lux-fg);
     }
 
     h1,
     h2,
     h3,
     h4,
-    .font-heading {
-        font-family: 'Inter', sans-serif;
+    h5,
+    h6 {
+        @apply font-serif;
+        letter-spacing: -0.02em;
+    }
+}
+
+@layer utilities {
+    .bg-luxury-gradient {
+        background: linear-gradient(135deg, var(--lux-primary) 0%, #1e3a5f 100%);
+    }
+
+    .luxury-shadow {
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+    }
+
+    .premium-border {
+        border: 1px solid rgba(191, 167, 93, 0.2);
+    }
+
+    .gold-text {
+        color: var(--lux-gold);
+    }
+
+    .fraunces {
+        font-family: 'Fraunces', serif;
     }
 }
 
@@ -57,5 +99,31 @@
             opacity: 1;
             transform: translateY(0);
         }
+    }
+
+    @keyframes float {
+        0% {
+            transform: translate(0, 0) rotate(0deg) scale(1);
+        }
+
+        33% {
+            transform: translate(5vw, 5vh) rotate(120deg) scale(1.1);
+        }
+
+        66% {
+            transform: translate(-2vw, 10vh) rotate(240deg) scale(0.9);
+        }
+
+        100% {
+            transform: translate(0, 0) rotate(360deg) scale(1);
+        }
+    }
+
+    .animate-float {
+        animation: float 25s infinite linear;
+    }
+
+    .luxury-blob {
+        @apply absolute w-[500px] h-[500px] rounded-full mix-blend-multiply filter blur-[100px] opacity-[0.08] transition-all duration-1000;
     }
 }

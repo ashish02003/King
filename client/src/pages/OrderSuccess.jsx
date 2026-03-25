@@ -117,7 +117,7 @@ const OrderSuccess = () => {
                         </div>
                         <div className="bg-gray-50 rounded-2xl p-5">
                             <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-1">Amount Paid</p>
-                            <p className="text-2xl font-black text-indigo-700">₹{order.totalPrice?.toLocaleString()}</p>
+                            <p className="text-2xl font-black" style={{ color: '#2D5A27' }}>₹{order.totalPrice?.toLocaleString()}</p>
                         </div>
                     </div>
                 </div>
@@ -149,7 +149,7 @@ const OrderSuccess = () => {
                         </div>
                         <div className="border-t pt-3 flex justify-between">
                             <span className="font-black text-gray-800">Total</span>
-                            <span className="font-black text-indigo-700 text-xl">₹{order.totalPrice?.toLocaleString()}</span>
+                            <span className="font-black text-xl" style={{ color: '#2D5A27' }}>₹{order.totalPrice?.toLocaleString()}</span>
                         </div>
                     </div>
                 </div>
@@ -224,7 +224,7 @@ const OrderSuccess = () => {
                 <div className="flex flex-col sm:flex-row gap-4">
                     <Link
                         to="/profile"
-                        className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-center text-sm uppercase tracking-widest transition-all shadow-lg shadow-indigo-200 hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                        className="flex-1 py-4 bg-[#700000] hover:bg-[#5a0000] text-white rounded-2xl font-black text-center text-sm uppercase tracking-widest transition-all shadow-lg shadow-red-900/10 hover:-translate-y-0.5 flex items-center justify-center gap-2"
                     >
                         <FaClipboardList /> View My Orders
                     </Link>

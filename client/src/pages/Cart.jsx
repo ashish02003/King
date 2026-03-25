@@ -293,7 +293,7 @@ const Cart = () => {
                                             <div className="flex justify-between items-end mb-6">
                                                 <div>
                                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Payable</p>
-                                                    <Title level={2} style={{ marginBottom: 0, color: '#4f46e5', fontWeight: 900 }}>
+                                                    <Title level={2} style={{ marginBottom: 0, color: '#2D5A27', fontWeight: 900 }}>
                                                         ₹{totalPrice.toLocaleString()}
                                                     </Title>
                                                 </div>
@@ -306,7 +306,7 @@ const Cart = () => {
                                                 className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-2
                                                     ${selectedItems.length === 0
                                                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
-                                                        : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:-translate-y-1 hover:shadow-indigo-200 active:scale-95'
+                                                        : 'bg-[#2D5A27] text-white hover:bg-[#23471e] hover:-translate-y-1 hover:shadow-green-900/10 active:scale-95'
                                                     }`}
                                             >
                                                 Proceed to Checkout <span className="text-lg">→</span>
