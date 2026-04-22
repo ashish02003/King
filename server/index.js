@@ -85,12 +85,15 @@ app.use((req, res, next) => {
 });
 
 // For local development
-if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-    });
-}
+// if (process.env.NODE_ENV !== 'production') {
+//     app.listen(PORT, () => {
+//         console.log(`Server running on port ${PORT}`);
+//     });
+// }
 
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
 // Export for Vercel
 module.exports = app;
 
