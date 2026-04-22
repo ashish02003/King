@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 const axios = require('axios');
+const { getNimbusToken } = require('./shippingController');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // @desc    Create new order (called after payment verification)
@@ -13,41 +14,50 @@ const createOrder = async (req, res) => {
             orderItems,
             shippingAddress,
             subtotal,
+            gstTotal,
             packingChargesTotal,
             shippingChargesTotal,
             totalPrice,
-            paymentResult   // { razorpay_order_id, razorpay_payment_id, razorpay_signature, status }
+            paymentMethod,   // 'razorpay' | 'cod'
+            paymentResult,   // { razorpay_order_id, razorpay_payment_id, razorpay_signature, status }
+            isBuyNow
         } = req.body;
 
         if (!orderItems || orderItems.length === 0) {
             return res.status(400).json({ message: 'No order items' });
         }
 
+        const isCOD = paymentMethod === 'cod';
+
         const order = new Order({
             user: req.user._id,
             orderItems,
             shippingAddress,
             subtotal,
+            gstTotal: gstTotal || 0,
             packingChargesTotal: packingChargesTotal || 0,
             shippingChargesTotal: shippingChargesTotal || 0,
             totalPrice,
-            paymentMethod: 'razorpay',
-            paymentResult,
-            isPaid: true,
-            paidAt: Date.now(),
-            orderStatus: 'Order Confirmed'
+            paymentMethod: isCOD ? 'cod' : 'razorpay',
+            paymentResult: isCOD ? undefined : paymentResult,
+            isPaid: !isCOD,
+            paidAt: isCOD ? undefined : Date.now(),
+            paymentStatus: isCOD ? 'To be paid on delivery' : 'Paid',
+            orderStatus: 'Pending'
         });
 
         const created = await order.save();
 
-        // Clear the user's cart after order is placed
-        try {
-            await Cart.findOneAndUpdate(
-                { user: req.user._id },
-                { $set: { items: [] } }
-            );
-        } catch (cartErr) {
-            console.warn('Could not clear cart after order:', cartErr.message);
+        // Clear the user's cart after order is placed ONLY if not a buy now checkout
+        if (!isBuyNow) {
+            try {
+                await Cart.findOneAndUpdate(
+                    { user: req.user._id },
+                    { $set: { items: [] } }
+                );
+            } catch (cartErr) {
+                console.warn('Could not clear cart after order:', cartErr.message);
+            }
         }
 
         res.status(201).json(created);
@@ -121,11 +131,20 @@ const getAllOrders = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const updateOrderStatus = async (req, res) => {
     try {
-        const { orderStatus } = req.body;
+        const { orderStatus, paymentStatus, deliveryStatus } = req.body;
         const order = await Order.findById(req.params.id);
         if (!order) return res.status(404).json({ message: 'Order not found' });
 
-        order.orderStatus = orderStatus;
+        if (orderStatus) order.orderStatus = orderStatus;
+        if (deliveryStatus) order.deliveryStatus = deliveryStatus;
+        
+        if (paymentStatus) {
+            order.paymentStatus = paymentStatus;
+            if (paymentStatus === 'Paid' && !order.isPaid) {
+                order.isPaid = true;
+                order.paidAt = Date.now();
+            }
+        }
         await order.save();
         res.json(order);
     } catch (error) {
@@ -134,21 +153,22 @@ const updateOrderStatus = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// @desc    Mark order as Packed → Create shipment on NimbusPost
-// @route   PUT /api/orders/:id/pack
+// @desc    Ship order → Create shipment on NimbusPost & set Status → Shipped
+// @route   PUT /api/orders/:id/ship
 // @access  Admin
 // ─────────────────────────────────────────────────────────────────────────────
-const markAsPacked = async (req, res) => {
+const shipOrder = async (req, res) => {
     try {
         const order = await Order.findById(req.params.id)
             .populate('user', 'name email')
             .populate('orderItems.template', 'name basePrice');
 
         if (!order) return res.status(404).json({ message: 'Order not found' });
-        if (!order.isPaid) return res.status(400).json({ message: 'Order is not paid yet' });
+        // Allow packing for both paid (Razorpay) and COD orders
+        // COD orders are fulfillment-first, payment happens on delivery
 
-        // ── Create NimbusPost Shipment ────────────────────────────────────────
-        const token = process.env.NIMBUSPOST_TOKEN;
+        // Get dynamic token (since NIMBUSPOST_TOKEN is not in .env)
+        const token = await getNimbusToken();
         const addr = order.shippingAddress;
 
         // Build product name string
@@ -157,88 +177,97 @@ const markAsPacked = async (req, res) => {
             .join(', ');
 
         const totalQty = order.orderItems.reduce((s, i) => s + (i.quantity || 1), 0);
-
-        // Approximate weight: 500g per item (adjust as needed)
         const weight = (totalQty * 0.5).toFixed(2);
+
+        // Build order_items array for NimbusPost
+        const orderItems = order.orderItems.map(item => ({
+            name: item.template?.name || 'Custom Product',
+            qty: item.quantity || 1,
+            price: item.price,
+            sku: item.template?._id.toString() || 'SKU-001'
+        }));
 
         const nimbusPayload = {
             order_number: order._id.toString(),
-            product_name: productName,
-            product_quantity: totalQty,
-            product_price: order.totalPrice,
+            consignee_name: addr.fullName,
+            consignee_address: addr.addressLine1,
+            consignee_city: addr.city,
+            consignee_state: addr.state,
+            consignee_pincode: addr.pincode,
+            consignee_phone: addr.phone,
+            payment_type: order.paymentMethod === 'cod' ? 'cod' : 'prepaid',
+            order_amount: order.totalPrice,
+            cod_amount: order.paymentMethod === 'cod' ? order.totalPrice : 0,
             weight: parseFloat(weight),
-            payment_mode: 'prepaid',
             length: 15,
             breadth: 12,
             height: 10,
-            seller_name: process.env.NIMBUSPOST_SELLER_NAME,
-            seller_address: process.env.NIMBUSPOST_SELLER_ADDRESS,
-            seller_city: process.env.NIMBUSPOST_SELLER_CITY,
-            seller_state: process.env.NIMBUSPOST_SELLER_STATE,
-            seller_pincode: process.env.NIMBUSPOST_SELLER_PINCODE,
-            seller_phone: process.env.NIMBUSPOST_SELLER_PHONE,
-            seller_email: process.env.NIMBUSPOST_SELLER_EMAIL,
-            buyer_name: addr.fullName,
-            buyer_address: addr.addressLine1 + (addr.addressLine2 ? `, ${addr.addressLine2}` : ''),
-            buyer_city: addr.city,
-            buyer_state: addr.state,
-            buyer_pincode: addr.pincode,
-            buyer_phone: addr.phone,
+            pickup_warehouse_name: process.env.NIMBUSPOST_SELLER_NAME,
+            pickup_contact_name: process.env.NIMBUSPOST_SELLER_NAME,
+            pickup_address: process.env.NIMBUSPOST_SELLER_ADDRESS,
+            pickup_city: process.env.NIMBUSPOST_SELLER_CITY,
+            pickup_state: process.env.NIMBUSPOST_SELLER_STATE,
+            pickup_pincode: process.env.NIMBUSPOST_SELLER_PINCODE,
+            pickup_phone: process.env.NIMBUSPOST_SELLER_PHONE,
+            order_items: orderItems
         };
 
+        console.log("FINAL PAYLOAD (JSON - /v1/orders):", JSON.stringify(nimbusPayload, null, 2));
+        
         try {
-            const nimbusRes = await axios.post(
-                'https://api.nimbuspost.com/v1/shipments',
-                nimbusPayload,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'application/json'
+                const nimbusRes = await axios.post(
+                    'https://api.nimbuspost.com/v1/orders',
+                    nimbusPayload,
+                    {
+                        headers: {
+                            Authorization: token,
+                            'Content-Type': 'application/json'
+                        }
                     }
-                }
-            );
+                );
 
-            const nimbusData = nimbusRes.data;
-            console.log('NimbusPost response:', nimbusData);
+                const nimbusData = nimbusRes.data;
+                console.log('NimbusPost response:', nimbusData);
 
-            order.shippingInfo = {
-                awbCode: nimbusData.data?.awb_code || nimbusData.awb_code || '',
-                courier: nimbusData.data?.courier_name || nimbusData.courier_name || '',
-                nimbusOrderId: nimbusData.data?.order_id || nimbusData.order_id || '',
-                trackingUrl: nimbusData.data?.tracking_url || nimbusData.tracking_url || '',
-                lastStatus: 'Packed',
-                lastUpdated: new Date()
-            };
-        } catch (nimbusErr) {
-            // Don't block status update if NimbusPost fails — log and continue
-            console.error('NimbusPost API error:', nimbusErr?.response?.data || nimbusErr.message);
-            order.shippingInfo = {
-                awbCode: '',
-                courier: '',
-                lastStatus: 'Packed (NimbusPost pending)',
-                lastUpdated: new Date()
-            };
+                order.shippingInfo = {
+                    awbCode: nimbusData.data?.awb_code || nimbusData.awb_code || '',
+                    courier: nimbusData.data?.courier_name || nimbusData.courier_name || '',
+                    nimbusOrderId: nimbusData.data?.order_id || nimbusData.order_id || '',
+                    trackingUrl: nimbusData.data?.tracking_url || nimbusData.tracking_url || '',
+                    lastStatus: 'Packed',
+                    lastUpdated: new Date()
+                };
+            } catch(nimbusErr) {
+                // Don't block status update if NimbusPost fails — log and continue
+                console.error('NimbusPost API error:', nimbusErr?.response?.data || nimbusErr.message);
+                order.shippingInfo = {
+                    awbCode: '',
+                    courier: '',
+                    lastStatus: 'Shipped (NimbusPost pending)',
+                    lastUpdated: new Date()
+                };
+            }
+
+        order.orderStatus = 'Shipped';
+        order.deliveryStatus = 'Pending';
+            await order.save();
+
+            res.json({
+                message: 'Order shipped successfully',
+                order,
+                awbCode: order.shippingInfo?.awbCode || null
+            });
+        } catch (error) {
+            console.error('shipOrder error:', error);
+            res.status(500).json({ message: error.message });
         }
+    };
 
-        order.orderStatus = 'Packed';
-        await order.save();
-
-        res.json({
-            message: 'Order marked as Packed',
-            order,
-            awbCode: order.shippingInfo?.awbCode || null
-        });
-    } catch (error) {
-        console.error('markAsPacked error:', error);
-        res.status(500).json({ message: error.message });
-    }
-};
-
-module.exports = {
-    createOrder,
-    getMyOrders,
-    getOrderById,
-    getAllOrders,
-    updateOrderStatus,
-    markAsPacked
-};
+    module.exports = {
+        createOrder,
+        getMyOrders,
+        getOrderById,
+        getAllOrders,
+        updateOrderStatus,
+        shipOrder
+    };

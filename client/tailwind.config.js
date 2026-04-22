@@ -9,33 +9,33 @@ export default {
             colors: {
                 luxury: {
                     green: {
-                        dark: '#2D5A27',
-                        DEFAULT: '#4C7B47',
-                        light: '#7A9E72'
+                        dark: '#2D3A2B',
+                        DEFAULT: '#4A5D48',
+                        light: '#8A9A83'
                     },
                     blue: {
-                        dark: '#001F3F',
-                        DEFAULT: '#1E3A5F',
-                        light: '#4A6A8A'
+                        dark: '#0A1128',
+                        DEFAULT: '#1B2B52',
+                        light: '#4B6594'
                     },
                     red: {
-                        dark: '#700000',
-                        DEFAULT: '#9A1F40',
-                        light: '#C26B7D'
+                        dark: '#4D0A11',
+                        DEFAULT: '#720E17',
+                        light: '#A1515B'
                     },
                     gold: {
-                        dark: '#7E6B4E',
-                        DEFAULT: '#BFA75D',
-                        light: '#D9C5A3'
+                        dark: '#5E4B3C',
+                        DEFAULT: '#A68A56',
+                        light: '#D4C19C'
                     },
                     purple: {
-                        dark: '#3A1F40',
-                        DEFAULT: '#5B3A7B',
-                        light: '#9E7BBD'
+                        dark: '#30174D',
+                        DEFAULT: '#563C8C',
+                        light: '#A189CC'
                     },
                     charcoal: '#0F172A',
                     slate: '#1E293B',
-                    cream: '#F8F5F0',
+                    cream: '#FAF9F6',
                     pearl: '#FFFFFF',
                 }
             },

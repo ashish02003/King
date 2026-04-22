@@ -37,19 +37,19 @@ const Register = () => {
                 {/* Back Button - Inside Container */}
                 <button
                     onClick={() => navigate('/')}
-                    className="absolute top-6 left-6 flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-luxury-gold transition-colors group z-50"
+                    className="absolute top-6 left-6 flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-luxury-purple transition-colors group z-50"
                 >
-                    <div className="w-7 h-7 rounded-full border border-luxury-cream flex items-center justify-center group-hover:border-luxury-gold/20 transition-all bg-white shadow-sm">
+                    <div className="w-7 h-7 rounded-full border border-luxury-cream flex items-center justify-center group-hover:border-luxury-purple/20 transition-all bg-white shadow-sm">
                         <FaArrowLeft size={8} />
                     </div>
                     <span>Back</span>
                 </button>
 
                 {/* Visual Side (Left on Register) */}
-                <div className="hidden lg:flex w-1/2 bg-luxury-blue-dark relative p-16 items-center flex-col justify-center overflow-hidden">
+                <div className="hidden lg:flex w-1/2 bg-luxury-purple-dark relative p-16 items-center flex-col justify-center overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-full">
-                        <div className="absolute top-20 left-10 w-64 h-64 bg-luxury-gold rounded-full blur-[100px] opacity-10"></div>
-                        <div className="absolute bottom-20 right-10 w-64 h-64 bg-luxury-blue-light rounded-full blur-[100px] opacity-10"></div>
+                        <div className="absolute top-20 left-10 w-64 h-64 bg-luxury-purple rounded-full blur-[100px] opacity-10"></div>
+                        <div className="absolute bottom-20 right-10 w-64 h-64 bg-luxury-purple-light rounded-full blur-[100px] opacity-10"></div>
                     </div>
 
                     <div className="relative z-10 text-center">
@@ -57,7 +57,7 @@ const Register = () => {
                             <Logo className="scale-150" />
                         </div>
                         <h2 className="text-3xl font-[900] text-white tracking-tight mb-2 leading-tight">Start Your <br />Custom Journey</h2>
-                        <p className="text-luxury-gold-light/60 font-medium text-lg max-w-sm mx-auto">Create an account today and get exclusive access to premium design tools and offers.</p>
+                        <p className="text-luxury-purple-light/60 font-medium text-lg max-w-sm mx-auto">Create an account today and get exclusive access to premium design tools and offers.</p>
 
                         <div className="mt-8 p-4 bg-white/10 backdrop-blur-xl border border-white/20 rounded-lg text-left">
                             <div className="flex items-center gap-3 mb-2">

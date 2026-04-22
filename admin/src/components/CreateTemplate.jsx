@@ -9,10 +9,16 @@ import {
     FaSave, FaTimes, FaShapes, FaFont, FaImage, FaLayerGroup,
     FaCog, FaArrowUp, FaArrowDown, FaTrash, FaLock, FaUnlock,
     FaMagic, FaCloudUploadAlt, FaEdit, FaPlus, FaCubes, FaCoffee,
-    FaArrowLeft, FaEye
+    FaArrowLeft, FaEye, FaCamera, FaCheck
 } from 'react-icons/fa';
 
 const CreateTemplate = () => {
+    const MOCKUP_SIDES = [
+        { key: 'center', label: 'Front / Center' },
+        { key: 'left', label: 'Left Side' },
+        { key: 'right', label: 'Right Side' }
+    ];
+    const MOCKUP_SHAPE_OPTIONS = ['rectangle', 'heart', 'circle', 'rounded', 'mug-wrap'];
     const canvasRef = useRef(null);
     const bgImageInputRef = useRef(null);
     const graphicInputRef = useRef(null);
@@ -21,11 +27,18 @@ const CreateTemplate = () => {
     const [name, setName] = useState('');
     const [category, setCategory] = useState('');
     const [price, setPrice] = useState(0);
+    const [description, setDescription] = useState(''); // ✅ NEW
+    const [uses, setUses] = useState([]); // ✅ NEW
+    const [benefits, setBenefits] = useState([]); // ✅ NEW
     const [demoImageUrl, setDemoImageUrl] = useState('');
+    const [galleryImages, setGalleryImages] = useState([]); // ✅ NEW
+    const [mockupViews, setMockupViews] = useState([]); // ✅ NEW: High quality photographic mockups
+    const [isUploadingGallery, setIsUploadingGallery] = useState(false); // ✅ NEW
     const [variantNo, setVariantNo] = useState('');
     const [productSize, setProductSize] = useState('');
     const [printSize, setPrintSize] = useState('');
     const [moq, setMoq] = useState(1);
+    const [gst, setGst] = useState(0); // ✅ NEW
     const [packingCharges, setPackingCharges] = useState(0);  // ✅ NEW
     const [shippingCharges, setShippingCharges] = useState(0); // ✅ NEW
     const [categories, setCategories] = useState([]); // 👈 NEW
@@ -82,6 +95,8 @@ const CreateTemplate = () => {
     const hoveredSegmentRef = useRef(-1);
     const segmentOverlayRef = useRef(null); // highlight overlay for selected/hovered line
     const [wrapType, setWrapType] = useState('none'); // 'none' | 'mug' | 'bottle'
+    const [mockupDesignSide, setMockupDesignSide] = useState(null); // 'center' | 'left' | 'right'
+    const [mockupDirectEdit, setMockupDirectEdit] = useState(null); // direct drag/resize on mockup card
 
     // Initialize Canvas
     useEffect(() => {
@@ -271,8 +286,33 @@ const CreateTemplate = () => {
                     setMoq(data.moq || 1);
                     setWrapType(data.wrapType || 'none');
                     setDemoImageUrl(data.demoImageUrl || '');
+                    setGalleryImages(data.galleryImages || []); // ✅ NEW
+                    setMockupViews(
+                        (data.mockupViews || []).map((mv) => ({
+                            ...mv,
+                            side: mv.side || mv.angleFocus || 'center',
+                            shapeType: mv.shapeType || 'rectangle',
+                            placement: {
+                                x: mv.placement?.x ?? 25,
+                                y: mv.placement?.y ?? 25,
+                                width: mv.placement?.width ?? 50,
+                                height: mv.placement?.height ?? 50,
+                                angle: mv.placement?.angle ?? 0,
+                                curve: mv.placement?.curve ?? 0
+                            },
+                            bgTransform: {
+                                zoom: mv.bgTransform?.zoom ?? 1,
+                                offsetX: mv.bgTransform?.offsetX ?? 0,
+                                offsetY: mv.bgTransform?.offsetY ?? 0
+                            }
+                        }))
+                    );
                     setPackingCharges(data.packingCharges || 0);   // ✅ NEW
                     setShippingCharges(data.shippingCharges || 0); // ✅ NEW
+                    setGst(data.gst || 0); // ✅ NEW
+                    setDescription(data.description || ''); // ✅ NEW
+                    setUses(data.uses || []); // ✅ NEW
+                    setBenefits(data.benefits || []); // ✅ NEW
 
                     // Load canvas state
                     if (data.canvasSettings) {
@@ -473,6 +513,38 @@ const CreateTemplate = () => {
         e.target.value = '';
     };
 
+    // Upload Multiple Gallery Images
+    const handleGalleryUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        setIsUploadingGallery(true);
+        toast.loading('Uploading gallery images...', { id: 'gallery-upload' });
+
+        try {
+            const uploadedUrls = [];
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('image', file);
+                const uploadRes = await axios.post(`${API_BASE}/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+                uploadedUrls.push(uploadRes.data.url);
+            }
+
+            setGalleryImages(prev => [...prev, ...uploadedUrls]);
+            toast.success('Gallery images uploaded successfully!', { id: 'gallery-upload' });
+        } catch (error) {
+            console.error('Gallery upload failed', error);
+            toast.error('Failed to upload some images', { id: 'gallery-upload' });
+        } finally {
+            setIsUploadingGallery(false);
+            e.target.value = '';
+        }
+    };
+
+    const removeGalleryImage = (indexToRemove) => {
+        setGalleryImages(prev => prev.filter((_, index) => index !== indexToRemove));
+    };
+
     // Add Shape
     const addShape = (type) => {
         if (!canvas) return;
@@ -645,8 +717,22 @@ const CreateTemplate = () => {
         canvas.add(wrap);
         canvas.setActiveObject(wrap);
         setWrapType('mug');
+        
+        // Auto-update mockup defaults if they haven't been customized yet
+        setMockupViews(prev => {
+            if (!prev.length) return prev;
+            return prev.map(mv => ({
+                ...mv,
+                shapeType: 'mug-wrap',
+                placement: {
+                    ...mv.placement,
+                    curve: 35
+                }
+            }));
+        });
+
         canvas.renderAll();
-        toast.success('Professional Mug Smile Area added! Photo will curve perfectly.');
+        toast.success('Professional Mug Smile Area added! Mockups updated.');
     };
 
     // Helper to create a wave path string
@@ -702,6 +788,21 @@ const CreateTemplate = () => {
         // M top-left, Q control-point(center-lower), end(top-right)
         // L side-right-bottom, Q control-point(center-lower), end(bottom-left)
         return `M 0 ${curve} Q ${w / 2} ${curve * 2.5} ${w} ${curve} L ${w} ${h} Q ${w / 2} ${h + curve * 1.5} 0 ${h} Z`;
+    };
+
+    /** Same mug-wrap path in 0–100 SVG space (mockup overlay preview) */
+    const createMugSmilePathPct = (x, y, w, h, curve = 35) => {
+        const c = Math.min(Math.max(Number(curve) || 35, 1), h * 0.45);
+        return `M ${x} ${y + c} Q ${x + w / 2} ${y + c * 2.5} ${x + w} ${y + c} L ${x + w} ${y + h} Q ${x + w / 2} ${y + h + c * 1.5} ${x} ${y + h} Z`;
+    };
+
+    const createHeartPathPct = (x, y, w, h) => {
+        const cx = x + w / 2;
+        const topY = y + h * 0.2;
+        const bottomY = y + h;
+        return `M ${cx} ${bottomY}
+                C ${x + w * 1.05} ${y + h * 0.62}, ${x + w * 0.88} ${y + h * 0.16}, ${cx} ${topY}
+                C ${x + w * 0.12} ${y + h * 0.16}, ${x - w * 0.05} ${y + h * 0.62}, ${cx} ${bottomY} Z`;
     };
 
     // Helper function to create star points
@@ -1642,6 +1743,694 @@ const CreateTemplate = () => {
         canvas.renderAll();
     };
 
+    const getSideShapeMapFromCanvas = () => {
+        if (!canvas) return {};
+        const placeholders = canvas.getObjects()
+            .filter((o) => o.role === 'placeholder')
+            .sort((a, b) => (a.left || 0) - (b.left || 0));
+        if (!placeholders.length) return {};
+        const norm = (shape) => (shape === 'rect' ? 'rectangle' : shape || 'rectangle');
+        const primaryWrap = placeholders.find((p) => norm(p.shapeType) === 'mug-wrap');
+        if (primaryWrap && (wrapType === 'mug' || wrapType === 'bottle')) {
+            const wrapShape = norm(primaryWrap.shapeType);
+            return { left: wrapShape, center: wrapShape, right: wrapShape };
+        }
+        if (placeholders.length === 1) {
+            const shape = norm(placeholders[0].shapeType);
+            return { left: shape, center: shape, right: shape };
+        }
+        if (placeholders.length === 2) {
+            return {
+                left: norm(placeholders[0].shapeType),
+                center: norm(placeholders[0].shapeType),
+                right: norm(placeholders[1].shapeType)
+            };
+        }
+        return {
+            left: norm(placeholders[0].shapeType),
+            center: norm(placeholders[Math.floor(placeholders.length / 2)].shapeType),
+            right: norm(placeholders[placeholders.length - 1].shapeType)
+        };
+    };
+
+    const getSidePlacementMapFromCanvas = () => {
+        if (!canvas) return {};
+        const placeholders = canvas.getObjects()
+            .filter((o) => o.role === 'placeholder')
+            .sort((a, b) => (a.left || 0) - (b.left || 0));
+        if (!placeholders.length) return {};
+        const CANVAS_W = canvas.width || 400;
+        const CANVAS_H = canvas.height || 600;
+        const toPlacement = (ph) => {
+            const width = ph.getScaledWidth ? ph.getScaledWidth() : (ph.width || 120);
+            const height = ph.getScaledHeight ? ph.getScaledHeight() : (ph.height || 120);
+            const left = (ph.left || CANVAS_W / 2) - width / 2;
+            const top = (ph.top || CANVAS_H / 2) - height / 2;
+            return {
+                x: Math.max(0, Math.min(100, (left / CANVAS_W) * 100)),
+                y: Math.max(0, Math.min(100, (top / CANVAS_H) * 100)),
+                width: Math.max(5, Math.min(100, (width / CANVAS_W) * 100)),
+                height: Math.max(5, Math.min(100, (height / CANVAS_H) * 100)),
+                angle: ph.angle || 0,
+                curve: ph.shapeType === 'mug-wrap' ? 35 : 0
+            };
+        };
+        const norm = (shape) => (shape === 'rect' ? 'rectangle' : shape || 'rectangle');
+        const primaryWrap = placeholders.find((p) => norm(p.shapeType) === 'mug-wrap');
+        if (primaryWrap && (wrapType === 'mug' || wrapType === 'bottle')) {
+            const p = toPlacement(primaryWrap);
+            return { left: p, center: p, right: p };
+        }
+        if (placeholders.length === 1) {
+            const p = toPlacement(placeholders[0]);
+            return { left: p, center: p, right: p };
+        }
+        if (placeholders.length === 2) {
+            return { left: toPlacement(placeholders[0]), center: toPlacement(placeholders[0]), right: toPlacement(placeholders[1]) };
+        }
+        return {
+            left: toPlacement(placeholders[0]),
+            center: toPlacement(placeholders[Math.floor(placeholders.length / 2)]),
+            right: toPlacement(placeholders[placeholders.length - 1])
+        };
+    };
+
+    const getMockupForSide = (sideKey) => (
+        (mockupViews || []).find((mv) => (mv.side || mv.angleFocus || 'center') === sideKey) || null
+    );
+
+    const getBaseProductImageUrl = () => {
+        if (backgroundImageUrl) return backgroundImageUrl;
+        if (!canvas) return '';
+        const bgObj = canvas.getObjects().find((obj) => obj.id === 'background_image' || obj.role === 'background');
+        return bgObj?.src || (bgObj?.getSrc && bgObj.getSrc()) || '';
+    };
+
+    const upsertMockupForSide = (sideKey, payload) => {
+        const existing = [...(mockupViews || [])];
+        const idx = existing.findIndex((mv) => (mv.side || mv.angleFocus || 'center') === sideKey);
+        const viewName = sideKey === 'center' ? 'Front View' : `${sideKey[0].toUpperCase()}${sideKey.slice(1)} View`;
+        const base = {
+            viewName,
+            side: sideKey,
+            angleFocus: sideKey,
+            shapeType: payload.shapeType || 'rectangle',
+            placement: payload.placement || { x: 25, y: 25, width: 50, height: 50, angle: 0, curve: 0 }
+        };
+        if (idx >= 0) {
+            existing[idx] = { ...existing[idx], ...base, ...payload };
+            setMockupViews(existing);
+            return;
+        }
+        setMockupViews([...existing, { ...base, ...payload }]);
+    };
+
+    const getEffectiveMockupImage = (sideKey) => {
+        const side = getMockupForSide(sideKey);
+        return side?.backgroundUrl || getBaseProductImageUrl() || '';
+    };
+
+    // Keep side mockups aligned with base template placeholders.
+    const syncMockupSideFromCanvas = (sideKey) => {
+        const sideShapeMap = getSideShapeMapFromCanvas();
+        const sidePlacementMap = getSidePlacementMapFromCanvas();
+        const current = getMockupForSide(sideKey);
+        const baseImage = getBaseProductImageUrl();
+        const nextShape = sideShapeMap[sideKey] || current?.shapeType || 'rectangle';
+        const nextPlacement = sidePlacementMap[sideKey] || current?.placement || { x: 25, y: 25, width: 50, height: 50, angle: 0, curve: 35 };
+        const bg = current?.backgroundUrl || baseImage;
+        if (!bg) return false;
+        saveMockupPlacement(sideKey, nextShape, nextPlacement, nextPlacement?.customPath || current?.customPath || null);
+        upsertMockupForSide(sideKey, { backgroundUrl: bg });
+        return true;
+    };
+
+    const syncAllMockupSidesFromCanvas = () => {
+        const any = MOCKUP_SIDES.map(({ key }) => syncMockupSideFromCanvas(key)).some(Boolean);
+        if (any) toast.success('All sides synced from base shape');
+        else toast.error('Upload base/side mockup image first');
+    };
+
+    // One-click setup for 3-side preview studio:
+    // uses side-specific image when available, otherwise falls back to base image,
+    // and always syncs shape/placement from current base canvas placeholders.
+    const setupThreeSidePreviewStudio = () => {
+        const baseImage = getBaseProductImageUrl();
+        if (!baseImage) {
+            toast.error('Please upload base product image first');
+            return;
+        }
+        const sideShapeMap = getSideShapeMapFromCanvas();
+        const sidePlacementMap = getSidePlacementMapFromCanvas();
+        MOCKUP_SIDES.forEach(({ key }) => {
+            const current = getMockupForSide(key);
+            upsertMockupForSide(key, {
+                backgroundUrl: current?.backgroundUrl || baseImage,
+                shapeType: sideShapeMap[key] || current?.shapeType || 'rectangle',
+                placement: sidePlacementMap[key] || current?.placement || { x: 25, y: 25, width: 50, height: 50, angle: 0, curve: 35 },
+                customPath: sidePlacementMap[key]?.customPath || current?.customPath || null
+            });
+        });
+        toast.success('3-side preview studio is ready');
+    };
+
+    const uploadMockupImageForSide = (sideKey) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const sideShapeMap = getSideShapeMapFromCanvas();
+            const sidePlacementMap = getSidePlacementMapFromCanvas();
+            const autoShape = sideShapeMap[sideKey] || 'rectangle';
+            const autoPlacement = sidePlacementMap[sideKey] || { x: 25, y: 25, width: 50, height: 50, angle: 0, curve: 35 };
+            const existing = getMockupForSide(sideKey);
+            const toastId = `mockup-${sideKey}`;
+            toast.loading(`Uploading ${sideKey}...`, { id: toastId });
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+                const res = await axios.post(`${API_BASE}/upload`, formData);
+                upsertMockupForSide(sideKey, {
+                    backgroundUrl: res.data.url,
+                    shapeType: existing?.shapeType || autoShape,
+                    placement: existing?.placement || autoPlacement,
+                    customPath: existing?.customPath || autoPlacement?.customPath || null,
+                    bgTransform: existing?.bgTransform || { zoom: 1, offsetX: 0, offsetY: 0 }
+                });
+                toast.success(`${sideKey.toUpperCase()} image uploaded`, { id: toastId });
+            } catch {
+                toast.error('Upload Failed', { id: toastId });
+            }
+        };
+        input.click();
+    };
+
+    // Copy center/front mug-wrap placement to target side for consistent auto-wrap alignment.
+    const applyAutoMugWrapFromCenter = (sideKey) => {
+        const center = getMockupForSide('center');
+        const fallback = { x: 18, y: 14, width: 64, height: 72, angle: 0, curve: 35 };
+        const basePlacement = center?.placement || fallback;
+        const baseImage = getBaseProductImageUrl();
+        const current = getMockupForSide(sideKey);
+        const bg = current?.backgroundUrl || baseImage;
+        if (!bg) {
+            toast.error('Please upload base or side image first');
+            return;
+        }
+        upsertMockupForSide(sideKey, {
+            backgroundUrl: bg,
+            shapeType: 'mug-wrap',
+            placement: { ...basePlacement, angle: 0 },
+            customPath: createMugSmilePath(
+                (canvas?.width || 400) * ((basePlacement.width || 64) / 100),
+                (canvas?.height || 600) * ((basePlacement.height || 72) / 100),
+                basePlacement.curve || 35
+            )
+        });
+        toast.success(`${sideKey.toUpperCase()} aligned to center mug-wrap`);
+    };
+
+    const openSideShapeEditor = (sideKey) => {
+        const sideShapeMap = getSideShapeMapFromCanvas();
+        const sidePlacementMap = getSidePlacementMapFromCanvas();
+        const existing = getMockupForSide(sideKey);
+        const effective = getEffectiveMockupImage(sideKey);
+        if (!effective) {
+            toast.error('Please upload base or side image first');
+            return;
+        }
+        const nextView = {
+            backgroundUrl: existing?.backgroundUrl || effective,
+            shapeType: existing?.shapeType || sideShapeMap[sideKey] || 'rectangle',
+            placement: existing?.placement || sidePlacementMap[sideKey] || { x: 25, y: 25, width: 50, height: 50, angle: 0, curve: 35 },
+            customPath: existing?.customPath || sidePlacementMap[sideKey]?.customPath || null,
+            bgTransform: existing?.bgTransform || { zoom: 1, offsetX: 0, offsetY: 0 }
+        };
+        // Ensure side has a resolvable dedicated source before opening editor
+        upsertMockupForSide(sideKey, nextView);
+        setTimeout(() => toggleMockupDesign(sideKey, nextView), 0);
+    };
+
+    const openBaseImageEditor = async () => {
+        if (!canvas) return;
+        const baseBg = getBaseProductImageUrl();
+        if (!baseBg) {
+            toast.error('Please upload base product image first');
+            return;
+        }
+        if (mockupDesignSide) {
+            await toggleMockupDesign(null);
+        }
+        const img = await fabric.FabricImage.fromURL(baseBg + (baseBg.includes('?') ? '&' : '?') + 't=' + Date.now(), { crossOrigin: 'anonymous' });
+        const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+        const bgObj = canvas.getObjects().find(o => o.id === 'background_image');
+        if (bgObj) {
+            bgObj.setElement(img._element);
+            bgObj.set({
+                scaleX: scale,
+                scaleY: scale,
+                left: canvas.width / 2,
+                top: canvas.height / 2,
+                originX: 'center',
+                originY: 'center',
+                visible: true
+            });
+        } else {
+            const bg = new fabric.FabricImage(img._element, {
+                id: 'background_image',
+                selectable: false,
+                evented: false,
+                left: canvas.width / 2,
+                top: canvas.height / 2,
+                originX: 'center',
+                originY: 'center',
+                scaleX: scale,
+                scaleY: scale
+            });
+            canvas.add(bg);
+            canvas.sendObjectToBack(bg);
+        }
+        canvas.renderAll();
+        toast.success('Base image opened');
+    };
+
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+    const saveMockupPlacement = (sideKey, shapeType, nextPlacement, fallbackCustomPath = null) => {
+        let customPath = fallbackCustomPath;
+        if (shapeType === 'mug-wrap') {
+            const CANVAS_W = canvas?.width || 400;
+            const CANVAS_H = canvas?.height || 600;
+            const absW = CANVAS_W * (nextPlacement.width / 100);
+            const absH = CANVAS_H * (nextPlacement.height / 100);
+            customPath = createMugSmilePath(absW, absH, nextPlacement.curve || 35);
+        }
+        upsertMockupForSide(sideKey, {
+            shapeType: shapeType || 'rectangle',
+            placement: nextPlacement,
+            customPath
+        });
+    };
+
+    const updateMockupPlacementField = (sideKey, field, value) => {
+        const n = Number(value);
+        if (Number.isNaN(n)) return;
+        const current = getMockupForSide(sideKey);
+        const currentPlacement = current?.placement || { x: 25, y: 25, width: 50, height: 50, angle: 0, curve: 35 };
+        const minMax = {
+            x: [0, 100],
+            y: [0, 100],
+            width: [5, 100],
+            height: [5, 100],
+            angle: [-180, 180],
+            curve: [0, 100]
+        };
+        const [min, max] = minMax[field] || [-9999, 9999];
+        const nextValue = Math.max(min, Math.min(max, n));
+        
+        const nextPlacement = {
+            ...currentPlacement,
+            [field]: nextValue
+        };
+        saveMockupPlacement(sideKey, current?.shapeType || 'rectangle', nextPlacement, current?.customPath);
+    };
+
+    const updateMockupBgField = (sideKey, field, value) => {
+        const n = Number(value);
+        if (Number.isNaN(n)) return;
+        const current = getMockupForSide(sideKey);
+        const currentBg = current?.bgTransform || { zoom: 1, offsetX: 0, offsetY: 0 };
+        const range = {
+            zoom: [0.8, 2.5],
+            offsetX: [-1, 1],
+            offsetY: [-1, 1]
+        };
+        const [min, max] = range[field] || [-10, 10];
+        const next = { ...currentBg, [field]: clamp(n, min, max) };
+        upsertMockupForSide(sideKey, { bgTransform: next });
+    };
+
+    const startMockupDirectEdit = (e, sideKey, shapeType, placement, mode = 'move', handle = null) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const target = e.currentTarget;
+        const rect = target.getBoundingClientRect();
+        const px = ((e.clientX - rect.left) / rect.width) * 100;
+        const py = ((e.clientY - rect.top) / rect.height) * 100;
+        setMockupDirectEdit({
+            sideKey,
+            shapeType,
+            mode,
+            handle,
+            startPoint: { x: px, y: py },
+            startPlacement: { ...placement }
+        });
+    };
+
+    useEffect(() => {
+        if (!mockupDirectEdit) return undefined;
+
+        const handleMove = (e) => {
+            const card = document.getElementById(`mockup-card-${mockupDirectEdit.sideKey}`);
+            if (!card) return;
+            const rect = card.getBoundingClientRect();
+            const px = ((e.clientX - rect.left) / rect.width) * 100;
+            const py = ((e.clientY - rect.top) / rect.height) * 100;
+            const dx = px - mockupDirectEdit.startPoint.x;
+            const dy = py - mockupDirectEdit.startPoint.y;
+            const minSize = 5;
+            const base = mockupDirectEdit.startPlacement;
+            const next = { ...base };
+
+            if (mockupDirectEdit.mode === 'move') {
+                next.x = clamp(base.x + dx, 0, 100 - base.width);
+                next.y = clamp(base.y + dy, 0, 100 - base.height);
+            } else {
+                if (mockupDirectEdit.handle === 'se') {
+                    next.width = clamp(base.width + dx, minSize, 100 - base.x);
+                    next.height = clamp(base.height + dy, minSize, 100 - base.y);
+                } else if (mockupDirectEdit.handle === 'ne') {
+                    const nextY = clamp(base.y + dy, 0, base.y + base.height - minSize);
+                    next.y = nextY;
+                    next.height = clamp(base.height + (base.y - nextY), minSize, 100 - nextY);
+                    next.width = clamp(base.width + dx, minSize, 100 - base.x);
+                } else if (mockupDirectEdit.handle === 'sw') {
+                    const nextX = clamp(base.x + dx, 0, base.x + base.width - minSize);
+                    next.x = nextX;
+                    next.width = clamp(base.width + (base.x - nextX), minSize, 100 - nextX);
+                    next.height = clamp(base.height + dy, minSize, 100 - base.y);
+                } else if (mockupDirectEdit.handle === 'nw') {
+                    const nextX = clamp(base.x + dx, 0, base.x + base.width - minSize);
+                    const nextY = clamp(base.y + dy, 0, base.y + base.height - minSize);
+                    next.x = nextX;
+                    next.y = nextY;
+                    next.width = clamp(base.width + (base.x - nextX), minSize, 100 - nextX);
+                    next.height = clamp(base.height + (base.y - nextY), minSize, 100 - nextY);
+                }
+            }
+
+            saveMockupPlacement(mockupDirectEdit.sideKey, mockupDirectEdit.shapeType, next);
+        };
+
+        const handleUp = () => setMockupDirectEdit(null);
+
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleUp);
+        return () => {
+            window.removeEventListener('mousemove', handleMove);
+            window.removeEventListener('mouseup', handleUp);
+        };
+    }, [mockupDirectEdit]);
+
+    const getPlacementFromPlaceholder = (ph) => {
+        if (!canvas || !ph) return null;
+        const CANVAS_W = canvas.width || 400;
+        const CANVAS_H = canvas.height || 600;
+        const width = ph.getScaledWidth ? ph.getScaledWidth() : (ph.width || 120);
+        const height = ph.getScaledHeight ? ph.getScaledHeight() : (ph.height || 120);
+        const left = (ph.left || CANVAS_W / 2) - width / 2;
+        const top = (ph.top || CANVAS_H / 2) - height / 2;
+
+        let customPath = null;
+        if (ph.type === 'path') {
+            // Fabric 6 path conversion to SVG string
+            customPath = ph.path.map(seg => seg.join(' ')).join(' ');
+        } else if (ph.shapeType === 'heart') {
+            customPath = 'M 272.7 238.7 C 206.5 238.7 152.7 292.5 152.7 358.7 C 152.7 493.5 288.6 528.8 381.3 662 C 468.8 529.6 609.8 489.2 609.8 358.7 C 609.8 292.5 556.1 238.7 489.8 238.7 C 441.8 238.7 400.4 267.1 381.3 307.9 C 362.1 267.1 320.7 238.7 272.7 238.7 Z';
+        } else if (ph.shapeType === 'mug-wrap') {
+            const curve = ph.curveIntensity || 35;
+            customPath = createMugSmilePath(width, height, curve);
+            return {
+                x: (left / CANVAS_W) * 100,
+                y: (top / CANVAS_H) * 100,
+                width: (width / CANVAS_W) * 100,
+                height: (height / CANVAS_H) * 100,
+                angle: ph.angle || 0,
+                curve,
+                customPath
+            };
+        }
+
+        return {
+            x: (left / CANVAS_W) * 100,
+            y: (top / CANVAS_H) * 100,
+            width: (width / CANVAS_W) * 100,
+            height: (height / CANVAS_H) * 100,
+            angle: ph.angle || 0,
+            curve: 0,
+            customPath: customPath
+        };
+    };
+
+    const inferShapeTypeFromObject = (obj) => {
+        if (!obj) return 'rectangle';
+        if (obj.shapeType) return obj.shapeType === 'rect' ? 'rectangle' : obj.shapeType;
+        if (obj.type === 'circle' || obj.type === 'ellipse') return 'circle';
+        if (obj.type === 'triangle') return 'triangle';
+        if (obj.type === 'rect') {
+            const rx = Number(obj.rx) || 0;
+            const ry = Number(obj.ry) || 0;
+            const w = Number(obj.width) || 0;
+            const h = Number(obj.height) || 0;
+            // Rounded corners near half-size behave as a circle/ellipse visual
+            if ((w > 0 && rx >= w * 0.45) || (h > 0 && ry >= h * 0.45)) return 'circle';
+            if (rx > 0 || ry > 0) return 'rounded';
+            return 'rectangle';
+        }
+        if (obj.type === 'path' || obj.type === 'polygon' || obj.type === 'polyline') return 'custom';
+        return 'rectangle';
+    };
+
+    const toggleMockupDesign = async (side, forcedView = null) => {
+        if (!canvas) return;
+
+        if (side === null) {
+            // --- EXIT MOCKUP DESIGN MODE ---
+            const baseBg = getBaseProductImageUrl();
+            if (baseBg) {
+                const img = await fabric.FabricImage.fromURL(baseBg + (baseBg.includes('?') ? '&' : '?') + 't=' + Date.now(), { crossOrigin: 'anonymous' });
+                const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+                const bgObj = canvas.getObjects().find(o => o.id === 'background_image');
+                if (bgObj) {
+                    bgObj.setElement(img._element);
+                    bgObj.set({
+                        scaleX: scale,
+                        scaleY: scale,
+                        left: canvas.width / 2,
+                        top: canvas.height / 2,
+                        originX: 'center',
+                        originY: 'center'
+                    });
+                }
+            }
+
+            // Restore all pre-mockup object states, remove temporary ones
+            canvas.getObjects().forEach(obj => {
+                if (obj.id === 'temp_mockup_designer') canvas.remove(obj);
+                if (obj.id !== 'temp_mockup_designer' && obj.__preMockupState) {
+                    obj.set({
+                        visible: obj.__preMockupState.visible,
+                        selectable: obj.__preMockupState.selectable,
+                        evented: obj.__preMockupState.evented
+                    });
+                    delete obj.__preMockupState;
+                }
+            });
+
+            setMockupDesignSide(null);
+            canvas.renderAll();
+            toast.success('Returned to Base Design');
+            return;
+        }
+
+        // --- ENTER MOCKUP DESIGN MODE ---
+        const mv = forcedView || getMockupForSide(side);
+        const sourceUrl = mv?.backgroundUrl || getEffectiveMockupImage(side);
+        if (!sourceUrl) {
+            toast.error('Pehle is side ki product image upload karein');
+            return;
+        }
+
+        toast.loading(`Entering design mode for ${side} view...`, { id: 'mock-mode' });
+
+        // 1. Isolate side editor canvas: keep only background layer visible
+        canvas.getObjects().forEach(obj => {
+            obj.__preMockupState = {
+                visible: obj.visible !== false,
+                selectable: !!obj.selectable,
+                evented: obj.evented !== false
+            };
+            if (obj.id !== 'background_image') {
+                obj.set({ visible: false, selectable: false, evented: false });
+            } else {
+                obj.set({ visible: true, selectable: false, evented: false });
+            }
+        });
+
+        // 2. Set Mockup Background (Cover mode to fill whole designer area)
+        const img = await fabric.FabricImage.fromURL(sourceUrl + (sourceUrl.includes('?') ? '&' : '?') + 't=' + Date.now(), { crossOrigin: 'anonymous' });
+        // Align side image fitting with base image behavior (contain)
+        const scaleBase = Math.min(canvas.width / img.width, canvas.height / img.height);
+        const zoom = Math.max(0.8, Math.min(2.5, Number(mv?.bgTransform?.zoom) || 1));
+        const scale = scaleBase * zoom;
+        const offX = (Number(mv?.bgTransform?.offsetX) || 0) * canvas.width * 0.24;
+        const offY = (Number(mv?.bgTransform?.offsetY) || 0) * canvas.height * 0.24;
+        const bgObj = canvas.getObjects().find(o => o.id === 'background_image');
+        if (bgObj) {
+            bgObj.setElement(img._element);
+            bgObj.set({
+                scaleX: scale,
+                scaleY: scale,
+                left: canvas.width / 2 + offX,
+                top: canvas.height / 2 + offY,
+                originX: 'center',
+                originY: 'center'
+            });
+        } else {
+            // Fallback for templates without a dedicated background layer object
+            const bg = new fabric.FabricImage(img._element, {
+                id: 'background_image',
+                selectable: false,
+                evented: false,
+                left: canvas.width / 2 + offX,
+                top: canvas.height / 2 + offY,
+                originX: 'center',
+                originY: 'center',
+                scaleX: scale,
+                scaleY: scale
+            });
+            canvas.add(bg);
+            canvas.sendObjectToBack(bg);
+        }
+
+        // 3. Add temporary design-area for this mockup
+        const p = mv.placement || { x: 25, y: 25, width: 50, height: 50, angle: 0, curve: 35 };
+        const cW = canvas.width;
+        const cH = canvas.height;
+
+        let shape;
+        if (mv.shapeType === 'mug-wrap') {
+            const curve = p.curve || 35;
+            const pathStr = createMugSmilePath(cW * (p.width / 100), cH * (p.height / 100), curve);
+            shape = new fabric.Path(pathStr, {
+                fill: 'rgba(56, 189, 248, 0.2)',
+                stroke: '#38bdf8',
+                strokeWidth: 3,
+                strokeDashArray: [10, 5],
+                shapeType: 'mug-wrap',
+                curveIntensity: curve
+            });
+        } else {
+            shape = new fabric.Rect({
+                width: cW * (p.width / 100),
+                height: cH * (p.height / 100),
+                fill: 'rgba(99, 102, 241, 0.15)',
+                stroke: '#6366f1',
+                strokeWidth: 3,
+                strokeDashArray: [10, 5],
+                rx: mv.shapeType === 'rounded' ? 20 : 0,
+                ry: mv.shapeType === 'rounded' ? 20 : 0,
+                shapeType: mv.shapeType || 'rectangle'
+            });
+            if (mv.shapeType === 'circle') shape.set({ rx: 999, ry: 999 });
+        }
+
+        shape.set({
+            left: (p.x / 100) * cW + (cW * (p.width / 100) / 2),
+            top: (p.y / 100) * cH + (cH * (p.height / 100) / 2),
+            originX: 'center',
+            originY: 'center',
+            angle: p.angle || 0,
+            id: 'temp_mockup_designer',
+            role: 'placeholder' // So standard tools like 'Draw Custom Shape' work on it
+        });
+
+        canvas.add(shape);
+        canvas.setActiveObject(shape);
+        setMockupDesignSide(side);
+        canvas.renderAll();
+        toast.success(`Designing ${side} view area`, { id: 'mock-mode' });
+    };
+
+    const finishMockupDesign = () => {
+        if (!canvas || !mockupDesignSide) return;
+        const tempShape = canvas.getObjects().find(o => o.id === 'temp_mockup_designer');
+        if (!tempShape) {
+            toggleMockupDesign(null);
+            return;
+        }
+
+        const placement = getPlacementFromPlaceholder(tempShape);
+        const preservedShapeType = tempShape.shapeType || inferShapeTypeFromObject(tempShape);
+        upsertMockupForSide(mockupDesignSide, {
+            shapeType: preservedShapeType || 'rectangle',
+            placement: placement,
+            customPath: placement.customPath
+        });
+
+        toggleMockupDesign(null);
+    };
+
+    useEffect(() => {
+        if (activeTab !== 'mockup') return;
+        const sideShapeMap = getSideShapeMapFromCanvas();
+        const sidePlacementMap = getSidePlacementMapFromCanvas();
+        if (!Object.keys(sideShapeMap).length) return;
+        setMockupViews((prev) => prev.map((mv) => {
+            const side = mv.side || mv.angleFocus || 'center';
+            const autoShape = sideShapeMap[side];
+            const autoPlacement = sidePlacementMap[side];
+            const placement = autoPlacement
+                ? {
+                    ...mv.placement,
+                    width: autoPlacement.width,
+                    height: autoPlacement.height,
+                    angle: autoPlacement.angle
+                }
+                : mv.placement;
+            if (!autoShape && !autoPlacement) return mv;
+            return { ...mv, shapeType: mv.shapeType || autoShape, placement };
+        }));
+    }, [activeTab, canvas]);
+
+    useEffect(() => {
+        if (activeTab !== 'mockup') return;
+        const sideShapeMap = getSideShapeMapFromCanvas();
+        const sidePlacementMap = getSidePlacementMapFromCanvas();
+        const baseImage = getBaseProductImageUrl();
+        setMockupViews((prev) => {
+            let changed = false;
+            const next = MOCKUP_SIDES.map(({ key }) => {
+                const existing = prev.find((mv) => (mv.side || mv.angleFocus || 'center') === key);
+                const fallbackPlacement = sidePlacementMap[key] || { x: 25, y: 25, width: 50, height: 50, angle: 0, curve: 0 };
+                const fallbackShape = sideShapeMap[key] || 'rectangle';
+                if (!existing) {
+                    changed = true;
+                    return {
+                        viewName: key === 'center' ? 'Front View' : `${key[0].toUpperCase()}${key.slice(1)} View`,
+                        side: key,
+                        angleFocus: key,
+                        backgroundUrl: baseImage || '',
+                        shapeType: fallbackShape,
+                        placement: fallbackPlacement
+                    };
+                }
+                const needsImage = !existing.backgroundUrl && !!baseImage;
+                if (needsImage) changed = true;
+                return {
+                    ...existing,
+                    backgroundUrl: existing.backgroundUrl || baseImage || '',
+                    shapeType: existing.shapeType || fallbackShape,
+                    placement: existing.placement || fallbackPlacement
+                };
+            });
+            if (!changed) return prev;
+            return next;
+        });
+    }, [activeTab, backgroundImageUrl, canvas]);
+
     // Save Template
     const saveTemplate = async () => {
         if (!name) return alert('Please enter a template name');
@@ -1747,14 +2536,119 @@ const CreateTemplate = () => {
                 }
             });
 
+            const sortedPlaceholdersForSides = [...allPlaceholders].sort((a, b) => (a.left || 0) - (b.left || 0));
+            const sideShapeFromCanvas = (() => {
+                const norm = (shape) => (shape === 'rect' ? 'rectangle' : shape || 'rectangle');
+                const primaryWrap = sortedPlaceholdersForSides.find((p) => norm(p.shapeType) === 'mug-wrap');
+                if (primaryWrap && (wrapType === 'mug' || wrapType === 'bottle')) {
+                    const wrapShape = norm(primaryWrap.shapeType);
+                    return { left: wrapShape, center: wrapShape, right: wrapShape };
+                }
+                if (!sortedPlaceholdersForSides.length) return {};
+                if (sortedPlaceholdersForSides.length === 1) {
+                    const shape = norm(sortedPlaceholdersForSides[0].shapeType);
+                    return { left: shape, center: shape, right: shape };
+                }
+                if (sortedPlaceholdersForSides.length === 2) {
+                    return {
+                        left: norm(sortedPlaceholdersForSides[0].shapeType),
+                        center: norm(sortedPlaceholdersForSides[0].shapeType),
+                        right: norm(sortedPlaceholdersForSides[1].shapeType)
+                    };
+                }
+                return {
+                    left: norm(sortedPlaceholdersForSides[0].shapeType),
+                    center: norm(sortedPlaceholdersForSides[Math.floor(sortedPlaceholdersForSides.length / 2)].shapeType),
+                    right: norm(sortedPlaceholdersForSides[sortedPlaceholdersForSides.length - 1].shapeType)
+                };
+            })();
+
+            const sidePlacementFromCanvas = (() => {
+                const CANVAS_W = canvas.width || 400;
+                const CANVAS_H = canvas.height || 600;
+                const toPlacement = (ph) => {
+                    const width = ph.getScaledWidth ? ph.getScaledWidth() : (ph.width || 120);
+                    const height = ph.getScaledHeight ? ph.getScaledHeight() : (ph.height || 120);
+                    const left = (ph.left || CANVAS_W / 2) - width / 2;
+                    const top = (ph.top || CANVAS_H / 2) - height / 2;
+                    return {
+                        x: (left / CANVAS_W) * 100,
+                        y: (top / CANVAS_H) * 100,
+                        width: (width / CANVAS_W) * 100,
+                        height: (height / CANVAS_H) * 100,
+                        angle: ph.angle || 0,
+                        curve: ph.shapeType === 'mug-wrap' ? (ph.curveIntensity || 35) : 0,
+                        customPath: ph.type === 'path'
+                            ? ph.path.map(seg => seg.join(' ')).join(' ')
+                            : (ph.shapeType === 'mug-wrap'
+                                ? createMugSmilePath(width, height, ph.curveIntensity || 35)
+                                : null)
+                    };
+                };
+                const norm = (shape) => (shape === 'rect' ? 'rectangle' : shape || 'rectangle');
+                const primaryWrap = sortedPlaceholdersForSides.find((p) => norm(p.shapeType) === 'mug-wrap');
+                if (primaryWrap && (wrapType === 'mug' || wrapType === 'bottle')) {
+                    const p = toPlacement(primaryWrap);
+                    return { left: p, center: p, right: p };
+                }
+                if (!sortedPlaceholdersForSides.length) return {};
+                if (sortedPlaceholdersForSides.length === 1) {
+                    const p = toPlacement(sortedPlaceholdersForSides[0]);
+                    return { left: p, center: p, right: p };
+                }
+                if (sortedPlaceholdersForSides.length === 2) {
+                    return {
+                        left: toPlacement(sortedPlaceholdersForSides[0]),
+                        center: toPlacement(sortedPlaceholdersForSides[0]),
+                        right: toPlacement(sortedPlaceholdersForSides[1])
+                    };
+                }
+                return {
+                    left: toPlacement(sortedPlaceholdersForSides[0]),
+                    center: toPlacement(sortedPlaceholdersForSides[Math.floor(sortedPlaceholdersForSides.length / 2)]),
+                    right: toPlacement(sortedPlaceholdersForSides[sortedPlaceholdersForSides.length - 1])
+                };
+            })();
+
+            const normalizedMockupViews = MOCKUP_SIDES.map(({ key: side }) => {
+                const mv = (mockupViews || []).find((item) => (item.side || item.angleFocus || 'center') === side);
+                if (!mv?.backgroundUrl) return null;
+                const autoPlacement = sidePlacementFromCanvas[side];
+                return {
+                    ...mv,
+                    side,
+                    angleFocus: side,
+                    // IMPORTANT: Keep mockup-side edits as source of truth.
+                    // Canvas placement/shape is only a fallback when mockup side is not customized yet.
+                    shapeType: mv.shapeType || sideShapeFromCanvas[side] || 'rectangle',
+                    placement: mv.placement || autoPlacement,
+                    customPath: mv.customPath || autoPlacement?.customPath
+                };
+            }).filter(Boolean);
+
+            // For mug/bottle templates, enforce complete 3-side preview setup.
+            const needsThreeSidePreview = wrapType === 'mug' || wrapType === 'bottle';
+            if (needsThreeSidePreview) {
+                const missingSides = MOCKUP_SIDES
+                    .map(({ key }) => key)
+                    .filter((side) => !normalizedMockupViews.some((mv) => (mv.side || mv.angleFocus || 'center') === side));
+                if (missingSides.length > 0) {
+                    toast.error(`Please set preview image for: ${missingSides.join(', ')}`);
+                    return;
+                }
+            }
+
             const templateData = {
                 name,
                 category: category || (categories[0]?.name ?? ''),
                 basePrice: price,
                 packingCharges: packingCharges || 0,   // ✅ NEW
                 shippingCharges: shippingCharges || 0, // ✅ NEW
+                gst: gst || 0, // ✅ NEW
                 previewImage: previewImageUrl,
                 demoImageUrl: demoImageUrl || undefined,
+                galleryImages: galleryImages, // ✅ NEW
+                mockupViews: normalizedMockupViews,     // ✅ NEW
                 backgroundImageUrl: finalBgUrl,
                 printArea: printArea,
                 variantNo: variantNo,
@@ -1762,6 +2656,9 @@ const CreateTemplate = () => {
                 printSize: printSize,
                 moq: moq,
                 wrapType: wrapType || 'none',
+                description: description, // ✅ NEW
+                uses: uses, // ✅ NEW
+                benefits: benefits, // ✅ NEW
                 canvasSettings: canvas.toJSON(['role', 'locked', 'shapeType', 'id', 'selectable', 'hoverCursor', 'customPoints', 'curveControls', 'straightEdges'])
             };
 
@@ -1801,7 +2698,7 @@ const CreateTemplate = () => {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/admin')}
-                        className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500"
+                        className="p-2 hover:bg-slate-100 transition-colors text-slate-500"
                         title="Back to Dashboard"
                     >
                         <FaArrowLeft />
@@ -1816,40 +2713,62 @@ const CreateTemplate = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <button
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
-                        onClick={() => navigate('/admin')}
-                        disabled={isSaving}
-                    >
-                        <FaTimes className="text-xs" /> Cancel
-                    </button>
+                {!mockupDesignSide ? (
+                    <div className="flex items-center gap-3">
+                        <button
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-all"
+                            onClick={() => navigate('/admin')}
+                            disabled={isSaving}
+                        >
+                            <FaTimes className="text-xs" /> Cancel
+                        </button>
 
-                    <div className="h-6 w-[1px] bg-slate-200 mx-1"></div>
+                        <div className="h-6 w-[1px] bg-slate-200 mx-1"></div>
 
-                    <button
-                        className={`flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:shadow-lg hover:shadow-emerald-200/50 active:scale-95 transition-all font-bold text-sm ${(isSaving || isUploadingBg) ? 'opacity-70 cursor-not-allowed' : ''}`}
-                        onClick={saveTemplate}
-                        disabled={isSaving || isUploadingBg}
-                    >
-                        {isSaving ? (
-                            <div className="flex items-center gap-2">
-                                <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full"></span>
-                                <span>Saving {uploadProgress}%</span>
-                            </div>
-                        ) : isUploadingBg ? (
-                            <div className="flex items-center gap-2">
-                                <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full"></span>
-                                <span>Uploading Background...</span>
-                            </div>
-                        ) : (
-                            <>
-                                <FaSave className="text-sm" />
-                                <span>{isEdit ? 'Update Template' : 'Save Template'}</span>
-                            </>
-                        )}
-                    </button>
-                </div>
+                        <button
+                            className={`flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:shadow-lg hover:shadow-emerald-200/50 active:scale-95 transition-all font-bold text-sm ${(isSaving || isUploadingBg) ? 'opacity-70 cursor-not-allowed' : ''}`}
+                            onClick={saveTemplate}
+                            disabled={isSaving || isUploadingBg}
+                        >
+                            {isSaving ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white"></span>
+                                    <span>Saving {uploadProgress}%</span>
+                                </div>
+                            ) : isUploadingBg ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full"></span>
+                                    <span>Uploading Background...</span>
+                                </div>
+                            ) : (
+                                <>
+                                    <FaSave className="text-sm" />
+                                    <span>{isEdit ? 'Update Template' : 'Save Template'}</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-3 animate-fadeIn">
+                        <div className="flex flex-col items-end mr-2">
+                            <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-none">Perspective Designer active</span>
+                            <span className="text-[9px] text-slate-400 font-bold uppercase">{mockupDesignSide} Side active</span>
+                        </div>
+                        <button
+                            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all font-bold text-sm hover:scale-[1.02] active:scale-95"
+                            onClick={finishMockupDesign}
+                        >
+                            <FaCheck className="text-xs" /> Save {mockupDesignSide.toUpperCase()} AREA
+                        </button>
+                        <button
+                            className="p-2.5 bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-500 transition-all rounded-lg"
+                            onClick={() => toggleMockupDesign(null)}
+                            title="Discard changes"
+                        >
+                            <FaTimes />
+                        </button>
+                    </div>
+                )}
             </header>
 
             <div className="flex flex-1 overflow-hidden relative">
@@ -1859,7 +2778,7 @@ const CreateTemplate = () => {
                         <div className="p-5 space-y-6">
                             <section className="space-y-4">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                                    <div className="p-2 bg-indigo-50 text-indigo-600">
                                         <FaCog className="text-sm" />
                                     </div>
                                     <h3 className="font-bold text-sm text-slate-700">Template Base Info</h3>
@@ -1870,18 +2789,18 @@ const CreateTemplate = () => {
                                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Template Name</label>
                                         <input
                                             type="text"
-                                            className="w-full bg-slate-50 border-0 focus:ring-2 focus:ring-indigo-500 p-3 rounded-xl text-sm transition-all placeholder:text-slate-300 font-medium"
+                                            className="w-full bg-slate-50 border-0 focus:ring-2 focus:ring-indigo-500 p-3 text-sm transition-all placeholder:text-slate-300 font-medium"
                                             placeholder="Enter design name..."
                                             value={name}
                                             onChange={e => setName(e.target.value)}
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-3 gap-3">
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Category</label>
                                             <select
-                                                className="w-full bg-slate-50 border-0 focus:ring-2 focus:ring-indigo-500 p-3 rounded-xl text-sm transition-all font-medium appearance-none"
+                                                className="w-full bg-slate-50 border-0 focus:ring-2 focus:ring-indigo-500 p-3 text-sm transition-all font-medium appearance-none"
                                                 value={category}
                                                 onChange={e => setCategory(e.target.value)}
                                             >
@@ -1900,17 +2819,49 @@ const CreateTemplate = () => {
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">₹</span>
                                                 <input
                                                     type="number"
-                                                    className="w-full bg-slate-50 border-0 focus:ring-2 focus:ring-indigo-500 p-3 pl-7 rounded-xl text-sm transition-all font-bold"
+                                                    className="w-full bg-slate-50 border-0 focus:ring-2 focus:ring-indigo-500 p-3 pl-7 text-sm transition-all font-bold"
                                                     placeholder="0"
                                                     value={price}
                                                     onChange={e => setPrice(Number(e.target.value))}
                                                 />
                                             </div>
                                         </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">GST (%)</label>
+                                            <div className="relative">
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">%</span>
+                                                <input
+                                                    type="number"
+                                                    className="w-full bg-slate-50 border-0 focus:ring-2 focus:ring-indigo-500 p-3 pr-7 text-sm transition-all font-bold"
+                                                    placeholder="0"
+                                                    value={gst}
+                                                    onChange={e => setGst(Number(e.target.value))}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Real-time Calculation Display */}
+                                    <div className="mt-3 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl shadow-sm">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Base + GST ({gst}%)</p>
+                                                <p className="text-[9px] text-slate-400 font-bold italic lowercase tracking-tight">Selling Unit Price</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-xl font-black text-emerald-600">
+                                                    ₹ {Math.round(price * (1 + (gst || 0) / 100))}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="pt-2 border-t border-emerald-200/50 flex items-center justify-between">
+                                            <p className="text-[9px] font-bold text-emerald-800 uppercase tracking-tighter">Incl. Packing ({packingCharges}₹)</p>
+                                            <p className="text-[11px] font-black text-emerald-700">₹ {Math.round((price * (1 + (gst || 0) / 100)) + (packingCharges || 0))}</p>
+                                        </div>
                                     </div>
 
                                     {/* ── Packing & Shipping Charges ─────────────────────── */}
-                                    <div className="mt-3 p-3 bg-indigo-50 rounded-2xl border border-indigo-100">
+                                    <div className="mt-3 p-3 bg-indigo-50 border border-indigo-100">
                                         <div className="flex items-center justify-between mb-3">
                                             <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest m-0">💰 Charges (Set by Admin)</h4>
                                         </div>
@@ -1923,7 +2874,7 @@ const CreateTemplate = () => {
                                                             type="checkbox"
                                                             checked={packingCharges === 0}
                                                             onChange={(e) => setPackingCharges(e.target.checked ? 0 : 10)}
-                                                            className="w-3.5 h-3.5 rounded accent-indigo-600"
+                                                            className="w-3.5 h-3.5 accent-indigo-600"
                                                         />
                                                         <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">Free</span>
                                                     </label>
@@ -1934,7 +2885,7 @@ const CreateTemplate = () => {
                                                         type="number"
                                                         min="0"
                                                         disabled={packingCharges === 0}
-                                                        className={`w-full border-0 focus:ring-2 focus:ring-indigo-500 p-3 pl-7 rounded-xl text-sm transition-all font-bold ${packingCharges === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-slate-50'}`}
+                                                        className={`w-full border-0 focus:ring-2 focus:ring-indigo-500 p-3 pl-7 text-sm transition-all font-bold ${packingCharges === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-slate-50'}`}
                                                         placeholder="0"
                                                         value={packingCharges}
                                                         onChange={e => setPackingCharges(Number(e.target.value))}
@@ -1949,7 +2900,7 @@ const CreateTemplate = () => {
                                                             type="checkbox"
                                                             checked={shippingCharges === 0}
                                                             onChange={(e) => setShippingCharges(e.target.checked ? 0 : 40)}
-                                                            className="w-3.5 h-3.5 rounded accent-indigo-600"
+                                                            className="w-3.5 h-3.5 accent-indigo-600"
                                                         />
                                                         <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">Free</span>
                                                     </label>
@@ -1960,7 +2911,7 @@ const CreateTemplate = () => {
                                                         type="number"
                                                         min="0"
                                                         disabled={shippingCharges === 0}
-                                                        className={`w-full border-0 focus:ring-2 focus:ring-indigo-500 p-3 pl-7 rounded-xl text-sm transition-all font-bold ${shippingCharges === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-slate-50'}`}
+                                                        className={`w-full border-0 focus:ring-2 focus:ring-indigo-500 p-3 pl-7 text-sm transition-all font-bold ${shippingCharges === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-slate-50'}`}
                                                         placeholder="0"
                                                         value={shippingCharges}
                                                         onChange={e => setShippingCharges(Number(e.target.value))}
@@ -1968,10 +2919,10 @@ const CreateTemplate = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <p className="text-[9px] text-indigo-400 mt-3 font-medium text-center">Final Price = (Base + Packing) × Qty + Shipping</p>
+                                        <p className="text-[9px] text-indigo-400 mt-3 font-medium text-center">Final Price = ((Base × (1 + GST/100)) + Packing) × Qty + Shipping</p>
                                     </div>
 
-                                    <div className="mt-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-4 border border-amber-100 shadow-sm relative overflow-hidden group">
+                                    <div className="mt-4 bg-gradient-to-br from-amber-50 to-orange-50 p-4 border border-amber-100 shadow-sm relative overflow-hidden group">
                                         <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
                                             <FaMagic className="text-4xl text-amber-600" />
                                         </div>
@@ -1985,14 +2936,14 @@ const CreateTemplate = () => {
                                         {!demoImageUrl ? (
                                             <button
                                                 type="button"
-                                                className="w-full bg-white text-amber-600 py-2.5 rounded-xl border border-amber-200 hover:border-amber-400 hover:bg-amber-50 text-[11px] font-bold transition-all shadow-sm flex items-center justify-center gap-2"
+                                                className="w-full bg-white text-amber-600 py-2.5 border border-amber-200 hover:border-amber-400 hover:bg-amber-50 text-[11px] font-bold transition-all shadow-sm flex items-center justify-center gap-2"
                                                 onClick={() => demoImageInputRef.current?.click()}
                                             >
                                                 <FaCloudUploadAlt /> Choose Sample
                                             </button>
                                         ) : (
-                                            <div className="flex items-center gap-3 bg-white/60 p-2 rounded-xl border border-amber-200/50">
-                                                <div className="relative h-12 w-12 rounded-lg overflow-hidden border-2 border-white shadow-sm flex-shrink-0">
+                                            <div className="flex items-center gap-3 bg-white/60 p-2 border border-amber-200/50">
+                                                <div className="relative h-12 w-12 overflow-hidden border-2 border-white shadow-sm flex-shrink-0">
                                                     <img src={demoImageUrl} alt="Demo" className="h-full w-full object-cover" />
                                                     <button
                                                         type="button"
@@ -2010,12 +2961,49 @@ const CreateTemplate = () => {
                                         )}
                                         <input type="file" ref={demoImageInputRef} hidden accept="image/*" onChange={handleDemoImageUpload} />
                                     </div>
+
+                                    {/* ── Additional Gallery Images ─────────────────────── */}
+                                    <div className="mt-4 bg-slate-50 border border-slate-200 p-4 relative overflow-hidden group">
+                                        <h4 className="font-bold text-xs text-slate-700 mb-1 flex items-center gap-2">
+                                            <FaImage className="text-sm" /> Product Gallery Images
+                                        </h4>
+                                        <p className="text-[10px] text-slate-500 leading-relaxed mb-3">
+                                            Upload additional product showcase images (e.g., side angles, packaging). These will appear on the product details page.
+                                        </p>
+
+                                        <div className="grid grid-cols-4 gap-2 mb-3">
+                                            {galleryImages.map((img, idx) => (
+                                                <div key={idx} className="relative aspect-square border border-slate-200 bg-white rounded overflow-hidden group/item">
+                                                    <img src={img} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeGalleryImage(idx)}
+                                                        className="absolute top-0 right-0 bg-red-500 hover:bg-red-600 text-white p-1 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                                    >
+                                                        <FaTimes className="text-[10px]" />
+                                                    </button>
+                                                </div>
+                                            ))}
+
+                                            <label className="relative aspect-square border-2 border-dashed border-slate-300 bg-slate-50 rounded flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 hover:border-indigo-400 transition-colors">
+                                                {isUploadingGallery ? (
+                                                    <span className="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full"></span>
+                                                ) : (
+                                                    <>
+                                                        <FaPlus className="text-slate-400 mb-1 text-sm" />
+                                                        <span className="text-[8px] font-bold text-slate-500 uppercase">Add</span>
+                                                    </>
+                                                )}
+                                                <input type="file" multiple hidden accept="image/*" onChange={handleGalleryUpload} disabled={isUploadingGallery} />
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
                             </section>
 
-                            <section className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-4">
+                            <section className="bg-slate-50 p-4 border border-slate-100 space-y-4">
                                 <div className="flex items-center gap-2">
-                                    <div className="p-2 bg-slate-200 text-slate-700 rounded-lg">
+                                    <div className="p-2 bg-slate-200 text-slate-700">
                                         <FaLayerGroup className="text-sm" />
                                     </div>
                                     <h3 className="font-bold text-sm text-slate-700">Product Specs</h3>
@@ -2026,7 +3014,7 @@ const CreateTemplate = () => {
                                         <label className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">Variant No</label>
                                         <input
                                             type="text"
-                                            className="w-full bg-white border border-slate-100 focus:ring-2 focus:ring-indigo-500 p-2 rounded-xl text-xs transition-all font-bold"
+                                            className="w-full bg-white border border-slate-100 focus:ring-2 focus:ring-indigo-500 p-2 text-xs transition-all font-bold"
                                             placeholder="1.1"
                                             value={variantNo}
                                             onChange={e => setVariantNo(e.target.value)}
@@ -2036,7 +3024,7 @@ const CreateTemplate = () => {
                                         <label className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">MOQ</label>
                                         <input
                                             type="number"
-                                            className="w-full bg-white border border-slate-100 focus:ring-2 focus:ring-indigo-500 p-2 rounded-xl text-xs transition-all font-bold text-center"
+                                            className="w-full bg-white border border-slate-100 focus:ring-2 focus:ring-indigo-500 p-2 text-xs transition-all font-bold text-center"
                                             value={moq}
                                             onChange={e => setMoq(Number(e.target.value))}
                                         />
@@ -2048,7 +3036,7 @@ const CreateTemplate = () => {
                                         <label className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">Product Size</label>
                                         <input
                                             type="text"
-                                            className="w-full bg-white border border-slate-100 focus:ring-2 focus:ring-indigo-500 p-2 rounded-xl text-xs transition-all font-medium"
+                                            className="w-full bg-white border border-slate-100 focus:ring-2 focus:ring-indigo-500 p-2 text-xs transition-all font-medium"
                                             placeholder="e.g., 11 Oz / 750 ML"
                                             value={productSize}
                                             onChange={e => setProductSize(e.target.value)}
@@ -2058,7 +3046,7 @@ const CreateTemplate = () => {
                                         <label className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">Print Area</label>
                                         <input
                                             type="text"
-                                            className="w-full bg-white border border-slate-100 focus:ring-2 focus:ring-indigo-500 p-2 rounded-xl text-xs transition-all font-medium"
+                                            className="w-full bg-white border border-slate-100 focus:ring-2 focus:ring-indigo-500 p-2 text-xs transition-all font-medium"
                                             placeholder="e.g., 19.6 x 9 cm"
                                             value={printSize}
                                             onChange={e => setPrintSize(e.target.value)}
@@ -2067,8 +3055,99 @@ const CreateTemplate = () => {
                                 </div>
                             </section>
 
+                            <section className="bg-white p-5 border border-slate-100 space-y-5 rounded-2xl shadow-sm">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                                        <FaPlus className="text-xs" />
+                                    </div>
+                                    <h3 className="font-black text-[11px] text-slate-700 uppercase tracking-widest leading-none">Marketplace Details</h3>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Product Narrative (Description)</label>
+                                        <textarea
+                                            className="w-full bg-slate-50 border-2 border-slate-100 focus:border-indigo-500 focus:bg-white p-4 text-xs transition-all font-medium rounded-2xl min-h-[120px] shadow-sm"
+                                            placeholder="Describe the product quality, feel, and usage..."
+                                            value={description}
+                                            onChange={e => setDescription(e.target.value)}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Product Highlights (Key Benefits)</label>
+                                        <div className="space-y-2 mb-3">
+                                            {benefits.map((b, i) => (
+                                                <div key={i} className="flex items-center gap-2 bg-white p-2 rounded-xl border border-slate-100 group shadow-sm">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm ml-2"></div>
+                                                    <input
+                                                        type="text"
+                                                        className="flex-1 bg-transparent border-none p-0 text-[11px] font-bold text-slate-700 focus:outline-none"
+                                                        value={b}
+                                                        onChange={(e) => {
+                                                            const newB = [...benefits];
+                                                            newB[i] = e.target.value;
+                                                            setBenefits(newB);
+                                                        }}
+                                                    />
+                                                    <button
+                                                        onClick={() => setBenefits(benefits.filter((_, idx) => idx !== i))}
+                                                        className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                                                    >
+                                                        <FaTimes size={10} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setBenefits([...benefits, 'New Highlight Point'])}
+                                            className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:border-indigo-400 hover:text-indigo-500 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <FaPlus className="text-[10px]" /> Add Technical Point
+                                        </button>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Common Uses</label>
+                                        <div className="flex flex-wrap gap-2 mb-3">
+                                            {uses.map((u, i) => (
+                                                <div key={i} className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full border border-indigo-100">
+                                                    <span className="text-[10px] font-black tracking-tight">{u}</span>
+                                                    <button type="button" onClick={() => setUses(uses.filter((_, idx) => idx !== i))} className="hover:text-rose-500">
+                                                        <FaTimes size={8} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                className="w-full bg-slate-50 border-none p-3.5 pr-12 text-[10px] font-bold uppercase tracking-widest rounded-2xl placeholder:text-slate-300"
+                                                placeholder="Type and press Enter or Blur..."
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && e.target.value.trim()) {
+                                                        const newVal = e.target.value.trim();
+                                                        if (!uses.includes(newVal)) setUses([...uses, newVal]);
+                                                        e.target.value = '';
+                                                    }
+                                                }}
+                                                onBlur={(e) => {
+                                                    if (e.target.value.trim()) {
+                                                        const newVal = e.target.value.trim();
+                                                        if (!uses.includes(newVal)) setUses([...uses, newVal]);
+                                                        e.target.value = '';
+                                                    }
+                                                }}
+                                            />
+                                            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 bg-white border border-slate-200 text-[8px] text-slate-400 font-black rounded-lg shadow-sm">ENT</kbd>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
                             {/* Tool Tabs - Modern Segmented Control */}
-                            <div className="bg-slate-100 p-1.5 rounded-2xl flex items-center gap-1">
+                            <div className="bg-slate-100 p-1.5 flex items-center gap-1">
                                 {[
                                     { id: 'background', icon: FaImage, label: 'Bg' },
                                     { id: 'shapes', icon: FaShapes, label: 'Shape' },
@@ -2078,7 +3157,7 @@ const CreateTemplate = () => {
                                 ].map(tab => (
                                     <button
                                         key={tab.id}
-                                        className={`flex-1 flex flex-col items-center justify-center py-2.5 rounded-xl transition-all ${activeTab === tab.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        className={`flex-1 flex flex-col items-center justify-center py-2.5 transition-all ${activeTab === tab.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                         onClick={() => setActiveTab(tab.id)}
                                     >
                                         <tab.icon className={`text-sm mb-1 ${activeTab === tab.id ? 'scale-110' : ''} transition-transform`} />
@@ -2087,25 +3166,104 @@ const CreateTemplate = () => {
                                 ))}
                             </div>
 
-                            <div className="min-h-[200px] bg-slate-50/50 rounded-2xl p-4 border border-slate-100/50">
+                            <div className="min-h-[200px] bg-slate-50/50 p-4 border border-slate-100/50">
                                 {activeTab === 'background' && (
                                     <div className="space-y-4">
                                         <button
-                                            className="w-full bg-white border-2 border-dashed border-slate-200 text-slate-500 p-8 rounded-2xl hover:border-indigo-400 hover:text-indigo-500 hover:bg-indigo-50/30 transition-all flex flex-col items-center gap-3 group"
+                                            className="w-full bg-white border-2 border-dashed border-slate-200 text-slate-500 p-8 hover:border-indigo-400 hover:text-indigo-500 hover:bg-indigo-50/30 transition-all flex flex-col items-center gap-3 group"
                                             onClick={() => bgImageInputRef.current.click()}
                                         >
-                                            <div className="p-3 bg-slate-100 rounded-full group-hover:bg-indigo-100 transition-colors">
+                                            <div className="p-3 bg-slate-100 group-hover:bg-indigo-100 transition-colors">
                                                 <FaCloudUploadAlt className="text-2xl" />
                                             </div>
                                             <span className="text-xs font-bold uppercase tracking-wider">Select Product Image</span>
                                         </button>
                                         <input type="file" ref={bgImageInputRef} hidden onChange={handleBackgroundUpload} accept="image/*" />
                                         {backgroundImageUrl && (
-                                            <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 animate-fadeIn transition-all">
-                                                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                            <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 border border-emerald-100 animate-fadeIn transition-all">
+                                                <div className="h-2 w-2 bg-emerald-500 animate-pulse"></div>
                                                 <span className="text-[10px] font-bold uppercase tracking-wider">Background Ready</span>
                                             </div>
                                         )}
+
+                                        <div className="border border-slate-200 rounded-xl bg-white p-3 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Product Side Images</p>
+                                                <button
+                                                    onClick={setupThreeSidePreviewStudio}
+                                                    className="px-2 py-1 text-[8px] font-black uppercase rounded border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                                                >
+                                                    Auto Setup
+                                                </button>
+                                            </div>
+                                            <div className="p-2 border border-emerald-100 rounded-lg bg-emerald-50/60 space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[9px] font-black uppercase text-emerald-700">Base Image</span>
+                                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black ${getBaseProductImageUrl() ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
+                                                        {getBaseProductImageUrl() ? 'READY' : 'MISSING'}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={openBaseImageEditor}
+                                                    className="w-full py-1.5 text-[8px] font-black uppercase rounded border border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50"
+                                                >
+                                                    Open Base
+                                                </button>
+                                            </div>
+                                            {MOCKUP_SIDES.map((side) => {
+                                                const mv = getMockupForSide(side.key);
+                                                const effective = getEffectiveMockupImage(side.key);
+                                                return (
+                                                    <div key={`bg-side-${side.key}`} className="p-2 border border-slate-100 rounded-lg bg-slate-50/60 space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[9px] font-black uppercase text-slate-600">{side.key === 'center' ? 'Front/Center' : side.label}</span>
+                                                                <span className={`text-[7px] font-bold ${effective ? 'text-indigo-500' : 'text-slate-400'}`}>
+                                                                    {mv?.backgroundUrl ? 'Dedicated Image' : (effective ? 'Using Base Image' : 'Not Set')}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex gap-1">
+                                                                {(wrapType === 'mug' || wrapType === 'bottle') && (
+                                                                    <button
+                                                                        onClick={() => applyAutoMugWrapFromCenter(side.key)}
+                                                                        className="px-2 py-0.5 text-[7px] font-black uppercase rounded bg-purple-100 text-purple-700 hover:bg-purple-200"
+                                                                        title="Apply Center Wrap to this side"
+                                                                    >
+                                                                        Wrap
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => syncMockupSideFromCanvas(side.key)}
+                                                                    className="px-2 py-0.5 text-[7px] font-black uppercase rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                                                                >
+                                                                    Sync
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <button
+                                                                onClick={() => uploadMockupImageForSide(side.key)}
+                                                                className="py-1.5 text-[8px] font-black uppercase rounded border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50"
+                                                            >
+                                                                {mv?.backgroundUrl ? 'Change' : 'Upload'} {side.key}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => openSideShapeEditor(side.key)}
+                                                                className="py-1.5 text-[8px] font-black uppercase rounded border border-purple-200 text-purple-700 bg-white hover:bg-purple-50"
+                                                            >
+                                                                Edit Shape
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            <button
+                                                onClick={syncAllMockupSidesFromCanvas}
+                                                className="w-full py-2 text-[8px] font-black uppercase rounded border border-indigo-100 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+                                            >
+                                                Sync Shapes for All Sides
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
 
@@ -2122,7 +3280,7 @@ const CreateTemplate = () => {
                                             ].map(s => (
                                                 <button
                                                     key={s.id}
-                                                    className="p-3 bg-white border border-slate-100 rounded-xl hover:shadow-md hover:border-indigo-200 hover:scale-[1.02] transition-all text-xs font-bold flex flex-col items-center gap-1"
+                                                    className="p-3 bg-white border border-slate-100 hover:shadow-md hover:border-indigo-200 hover:scale-[1.02] transition-all text-xs font-bold flex flex-col items-center gap-1"
                                                     onClick={() => addShape(s.id)}
                                                 >
                                                     <span className="text-lg">{s.icon}</span>
@@ -2135,14 +3293,14 @@ const CreateTemplate = () => {
 
                                         <div className="grid grid-cols-2 gap-2">
                                             <button
-                                                className="p-3 bg-sky-50 border border-sky-100 hover:bg-sky-100 rounded-xl text-xs font-bold text-sky-700 flex flex-col items-center gap-1"
+                                                className="p-3 bg-sky-50 border border-sky-100 hover:bg-sky-100 text-xs font-bold text-sky-700 flex flex-col items-center gap-1"
                                                 onClick={() => addShape('mug-wrap')}
                                             >
                                                 <span className="text-lg">☕</span>
                                                 <span className="text-[10px] uppercase">Mug Wrap</span>
                                             </button>
                                             <button
-                                                className="p-3 bg-purple-50 border border-purple-100 hover:bg-purple-100 rounded-xl text-xs font-bold text-purple-700 flex flex-col items-center gap-1"
+                                                className="p-3 bg-purple-50 border border-purple-100 hover:bg-purple-100 text-xs font-bold text-purple-700 flex flex-col items-center gap-1"
                                                 onClick={() => addShape('wave')}
                                             >
                                                 <span className="text-lg">🌊</span>
@@ -2151,17 +3309,17 @@ const CreateTemplate = () => {
                                         </div>
 
                                         <button
-                                            className="w-full p-4 bg-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-100 transition-all font-bold text-xs flex items-center justify-center gap-2 group"
+                                            className="w-full p-4 bg-indigo-600 text-white hover:shadow-lg hover:shadow-indigo-100 transition-all font-bold text-xs flex items-center justify-center gap-2 group"
                                             onClick={startCustomShape}
                                         >
                                             <FaEdit className="group-hover:rotate-12 transition-transform" />
                                             <span>DRAW CUSTOM SHAPE</span>
                                         </button>
 
-                                        <label className="flex items-center gap-3 p-3 bg-slate-100 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-200 transition-colors">
+                                        <label className="flex items-center gap-3 p-3 bg-slate-100 border border-slate-200 cursor-pointer hover:bg-slate-200 transition-colors">
                                             <input
                                                 type="checkbox"
-                                                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                                                className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
                                                 checked={useSmoothCurve}
                                                 onChange={(e) => setUseSmoothCurve(e.target.checked)}
                                             />
@@ -2173,10 +3331,10 @@ const CreateTemplate = () => {
                                 {activeTab === 'text' && (
                                     <div className="space-y-4">
                                         <button
-                                            className="w-full bg-indigo-500 text-white p-4 rounded-2xl hover:bg-indigo-600 shadow-lg shadow-indigo-100 transition-all font-bold text-sm flex items-center justify-center gap-3 group"
+                                            className="w-full bg-indigo-500 text-white p-4 hover:bg-indigo-600 shadow-lg shadow-indigo-100 transition-all font-bold text-sm flex items-center justify-center gap-3 group"
                                             onClick={addText}
                                         >
-                                            <div className="p-2 bg-white/20 rounded-lg group-hover:scale-110 transition-transform">
+                                            <div className="p-2 bg-white/20 group-hover:scale-110 transition-transform">
                                                 <FaFont className="text-white" />
                                             </div>
                                             <span>INSERT NEW TEXT</span>
@@ -2188,10 +3346,10 @@ const CreateTemplate = () => {
                                 {activeTab === 'elements' && (
                                     <div className="space-y-3">
                                         <button
-                                            className="w-full bg-white border border-slate-200 p-4 rounded-xl hover:bg-indigo-50 hover:border-indigo-200 shadow-sm transition-all flex items-center gap-3 group"
+                                            className="w-full bg-white border border-slate-200 p-4 hover:bg-indigo-50 hover:border-indigo-200 shadow-sm transition-all flex items-center gap-3 group"
                                             onClick={addPlaceholder}
                                         >
-                                            <div className="p-2 bg-indigo-50 text-indigo-500 rounded-lg group-hover:scale-110 transition-transform">
+                                            <div className="p-2 bg-indigo-50 text-indigo-500 group-hover:scale-110 transition-transform">
                                                 <FaImage />
                                             </div>
                                             <div className="text-left">
@@ -2257,6 +3415,9 @@ const CreateTemplate = () => {
                                         </button>
                                     </div>
                                 )}
+
+
+
                             </div>
 
                             {/* Layer Controls & Properties */}
@@ -2334,6 +3495,42 @@ const CreateTemplate = () => {
                                                 />
                                             </div>
                                         </div>
+
+                                        {selectedObject.shapeType === 'mug-wrap' && (
+                                            <div className="space-y-1.5 pt-2 border-t border-slate-200/50">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <label className="text-[9px] font-bold text-indigo-500 uppercase">Smile Curve Intensity</label>
+                                                    <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">{selectedObject.curveIntensity || 35}</span>
+                                                </div>
+                                                <input
+                                                    type="range"
+                                                    min="0"
+                                                    max="100"
+                                                    step="1"
+                                                    className="w-full accent-indigo-600"
+                                                    value={selectedObject.curveIntensity || 35}
+                                                    onChange={(e) => {
+                                                        const val = Number(e.target.value);
+                                                        selectedObject.set('curveIntensity', val);
+                                                        selectedObject.curveIntensity = val;
+                                                        
+                                                        // Regenerate path
+                                                        const w = selectedObject.width;
+                                                        const h = selectedObject.height;
+                                                        const d = createMugSmilePath(w, h, val);
+                                                        const parsed = typeof fabric.util.parsePath === 'function' ? fabric.util.parsePath(d) : parsePathDSimple(d);
+                                                        if (parsed) {
+                                                            selectedObject.set('path', parsed);
+                                                            if (selectedObject.path !== undefined) selectedObject.path = parsed;
+                                                            selectedObject.dirty = true;
+                                                            canvas.renderAll();
+                                                        }
+                                                        
+                                                        updateProperty('curveIntensity', val);
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
 
                                     {(selectedObject.type === 'i-text' || selectedObject.type === 'text') && (
@@ -2516,6 +3713,61 @@ const CreateTemplate = () => {
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                        <div className="mb-4 p-3 rounded-xl border border-slate-200 bg-slate-50">
+                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Mockup Sources</p>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between text-[10px]">
+                                    <span className="font-black text-slate-700 uppercase">Base Image</span>
+                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black ${getBaseProductImageUrl() ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
+                                        {getBaseProductImageUrl() ? 'READY' : 'MISSING'}
+                                    </span>
+                                </div>
+                                {MOCKUP_SIDES.map((side) => {
+                                    const sideMv = getMockupForSide(side.key);
+                                    const effective = getEffectiveMockupImage(side.key);
+                                    const sideLabel = side.key === 'center' ? 'Center / Front' : `${side.label}`;
+                                    return (
+                                        <div key={`source-${side.key}`} className="flex items-center justify-between text-[10px]">
+                                            <span className="font-bold text-slate-600 uppercase">{sideLabel}</span>
+                                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black ${effective ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500'}`}>
+                                                {sideMv?.backgroundUrl ? 'CUSTOM' : (effective ? 'BASE' : 'MISSING')}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="mb-4 p-3 rounded-xl border border-slate-200 bg-white">
+                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Side Images Preview</p>
+                            <div className="space-y-2">
+                                {MOCKUP_SIDES.map((side) => {
+                                    const effective = getEffectiveMockupImage(side.key);
+                                    const sideLabel = side.key === 'center' ? 'Front / Center' : side.label;
+                                    return (
+                                        <div key={`thumb-${side.key}`} className="border border-slate-100 rounded-lg p-2 bg-slate-50/60">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-[8px] font-black uppercase text-slate-600">{sideLabel}</span>
+                                                <button
+                                                    onClick={() => openSideShapeEditor(side.key)}
+                                                    className="px-1.5 py-0.5 text-[7px] font-black uppercase rounded border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50"
+                                                >
+                                                    Edit Shape
+                                                </button>
+                                            </div>
+                                            <div className="h-24 rounded-md overflow-hidden border border-slate-100 bg-white flex items-center justify-center">
+                                                {effective ? (
+                                                    <img src={effective} className="w-full h-full object-cover" alt={`${sideLabel} mockup`} />
+                                                ) : (
+                                                    <span className="text-[8px] text-slate-400 font-bold uppercase">No image</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
                         {canvas?.getObjects().length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-4">
                                 <div className="p-6 bg-slate-100 rounded-full text-slate-300">

@@ -32,6 +32,14 @@ const userSchema = new mongoose.Schema({
         type: String,
         enum: ['active', 'inactive'],
         default: 'active'
+    },
+    shippingAddress: {
+        phone: { type: String, default: '' },
+        addressLine1: { type: String, default: '' },
+        addressLine2: { type: String, default: '' },
+        city: { type: String, default: '' },
+        state: { type: String, default: '' },
+        pincode: { type: String, default: '' }
     }
 }, { timestamps: true });
 

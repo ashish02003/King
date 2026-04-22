@@ -18,10 +18,10 @@ const Cart = () => {
     const selectedItems = getSelectedItems();
 
     // Subtotal of SELECTED items
-    const subtotal = selectedItems.reduce((acc, item) => acc + (item.price * (item.quantity || 1)), 0);
+    const subtotal = selectedItems.reduce((acc, item) => acc + ((item.price * (1 + (item.gst || 0) / 100)) * (item.quantity || 1)), 0);
     const packingChargesTotal = selectedItems.reduce((acc, item) => acc + ((item.packingCharges || 0) * (item.quantity || 1)), 0);
     const shippingChargesTotal = selectedItems.reduce((acc, item) => acc + (item.shippingCharges || 0), 0);
-    const totalPrice = subtotal + packingChargesTotal + shippingChargesTotal;
+    const totalPrice = Math.round(subtotal + packingChargesTotal + shippingChargesTotal);
     const totalItems = selectedItems.reduce((acc, item) => acc + (item.quantity || 1), 0);
 
     const handleRemoveClick = (item) => {
@@ -170,11 +170,11 @@ const Cart = () => {
                                                             </div>
                                                             <div className="text-left sm:text-right">
                                                                 <p className="text-xl font-black text-gray-900 mb-0">
-                                                                    ₹{(item.price * (item.quantity || 1)).toLocaleString()}
+                                                                    ₹{Math.round((item.price * (1 + (item.gst || 0) / 100)) * (item.quantity || 1)).toLocaleString()}
                                                                 </p>
                                                                 <div className="flex flex-col sm:items-end gap-0.5 mt-1">
                                                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                                                        Unit: ₹{item.price}
+                                                                        Unit: ₹{Math.round(item.price * (1 + (item.gst || 0) / 100))} (Incl. GST)
                                                                     </p>
                                                                     {(item.packingCharges > 0 || item.shippingCharges > 0) && (
                                                                         <div className="flex flex-wrap gap-2 sm:justify-end">
@@ -264,7 +264,7 @@ const Cart = () => {
                                                     <FaShoppingBag size={14} className="text-gray-400" />
                                                     Product Cost ({totalItems} items)
                                                 </div>
-                                                <Text strong className="text-gray-800">₹{subtotal.toLocaleString()}</Text>
+                                                <Text strong className="text-gray-800">₹{Math.round(subtotal).toLocaleString()}</Text>
                                             </div>
 
                                             <div className="flex justify-between items-center">
@@ -294,7 +294,7 @@ const Cart = () => {
                                                 <div>
                                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Payable</p>
                                                     <Title level={2} style={{ marginBottom: 0, color: '#2D5A27', fontWeight: 900 }}>
-                                                        ₹{totalPrice.toLocaleString()}
+                                                        ₹{Math.round(totalPrice).toLocaleString()}
                                                     </Title>
                                                 </div>
                                                 <span className="text-[11px] text-green-600 font-bold bg-green-50 px-2 py-1 rounded-lg">Best Price ✅</span>

@@ -13,8 +13,12 @@ import {
     FaPhone,
     FaShoppingBag,
     FaBox,
-    FaTruck
+    FaTruck,
+    FaMoneyBillWave,
+    FaCreditCard,
+    FaShieldAlt
 } from 'react-icons/fa';
+import { MdLocalShipping } from 'react-icons/md';
 import toast from 'react-hot-toast';
 
 // Load Razorpay script dynamically
@@ -53,34 +57,45 @@ const Field = ({ label, name, value, onChange, error, type = 'text', placeholder
 const Checkout = () => {
     const navigate = useNavigate();
     const { getSelectedItems, clearCart, buyNowItem, setBuyNowItem } = useCart();
-    const { user } = useAuth();
+    const { user, updateProfile } = useAuth();
+    const [saveAddress, setSaveAddress] = useState(true);
+    const [savingAddress, setSavingAddress] = useState(false);
 
     const selectedItems = buyNowItem ? [buyNowItem] : getSelectedItems();
     const [step, setStep] = useState(1);
     const [paymentLoading, setPaymentLoading] = useState(false);
+    const [orderPlaced, setOrderPlaced] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState('razorpay'); // 'razorpay' | 'cod'
 
     const [address, setAddress] = useState({
         fullName: user?.name || '',
-        phone: '',
-        addressLine1: '',
-        addressLine2: '',
-        city: '',
-        state: '',
-        pincode: ''
+        phone: user?.shippingAddress?.phone || '',
+        addressLine1: user?.shippingAddress?.addressLine1 || '',
+        addressLine2: user?.shippingAddress?.addressLine2 || '',
+        city: user?.shippingAddress?.city || '',
+        state: user?.shippingAddress?.state || '',
+        pincode: user?.shippingAddress?.pincode || ''
     });
 
     const [errors, setErrors] = useState({});
 
     useEffect(() => {
+        if (orderPlaced) return;
         if (!user) { navigate('/login'); return; }
         if (!buyNowItem && selectedItems.length === 0) { navigate('/cart'); }
-    }, [user, selectedItems, buyNowItem]);
+    }, [user, selectedItems, buyNowItem, orderPlaced]);
 
-    // Subtotal tracks the user's defined "Original Price" (Base + Packing), evaluating to 69.
-    const subtotal = selectedItems.reduce((acc, item) => {
-        const itemOriginalPrice = Number(item.price) + (Number(item.packingCharges) || 0);
-        return acc + (itemOriginalPrice * (item.quantity || 1));
+    // Price calculations
+    const productBaseTotal = selectedItems.reduce((acc, item) => {
+        return acc + (Number(item.price) * (item.quantity || 1));
     }, 0);
+
+    const gstTotal = selectedItems.reduce((acc, item) => {
+        const itemGst = (Number(item.price) * (Number(item.gst) || 0)) / 100;
+        return acc + (itemGst * (item.quantity || 1));
+    }, 0);
+
+    const subtotalWithGst = productBaseTotal + gstTotal;
 
     const packingChargesTotal = selectedItems.reduce(
         (acc, item) => acc + ((Number(item.packingCharges) || 0) * (item.quantity || 1)), 0
@@ -90,7 +105,7 @@ const Checkout = () => {
         (acc, item) => acc + (Number(item.shippingCharges) || 0), 0
     );
 
-    const totalPrice = subtotal + packingChargesTotal + shippingChargesTotal;
+    const totalPrice = Math.round(subtotalWithGst + packingChargesTotal + shippingChargesTotal);
 
     const validate = () => {
         const e = {};
@@ -109,8 +124,53 @@ const Checkout = () => {
         if (errors[e.target.name]) setErrors(prev => ({ ...prev, [e.target.name]: '' }));
     };
 
-    const handlePayNow = async () => {
-        if (!validate()) return;
+    // ── Place COD Order ─────────────────────────────────────────────────────
+    const handleCODOrder = async () => {
+        setPaymentLoading(true);
+        try {
+            const orderPayload = {
+                orderItems: selectedItems.map(item => ({
+                    template: item.template?._id || item.template,
+                    customizedJson: item.customizedJson || item.canvasJSON || {},
+                    userUploadedImages: item.userUploadedImages || [],
+                    finalImageUrl: item.finalImageUrl || item.finalDesignUrl || '',
+                    price: item.price,
+                    packingCharges: item.packingCharges || 0,
+                    shippingCharges: item.shippingCharges || 0,
+                    quantity: item.quantity || 1,
+                    gst: item.gst || 0
+                })),
+                shippingAddress: address,
+                subtotal: productBaseTotal,
+                gstTotal,
+                packingChargesTotal,
+                shippingChargesTotal,
+                totalPrice,
+                paymentMethod: 'cod',
+                isBuyNow: !!buyNowItem
+            };
+
+            const { data: createdOrder } = await axios.post(
+                `${API}/orders`,
+                orderPayload,
+                { headers: { Authorization: `Bearer ${user.token}` } }
+            );
+
+            setOrderPlaced(true);
+            if (buyNowItem) setBuyNowItem(null);
+            else await clearCart();
+
+            toast.success('🛵 Order placed! Pay on delivery.');
+            navigate(`/order-success/${createdOrder._id}`, { replace: true });
+        } catch (err) {
+            toast.error('Order creation failed. Please try again.');
+        } finally {
+            setPaymentLoading(false);
+        }
+    };
+
+    // ── Place Razorpay Order ────────────────────────────────────────────────
+    const handleRazorpayOrder = async () => {
         setPaymentLoading(true);
 
         const loaded = await loadRazorpay();
@@ -134,7 +194,7 @@ const Checkout = () => {
                 name: 'Mimitiinaa',
                 order_id: razorpayOrder.orderId,
                 prefill: { name: address.fullName, email: user.email, contact: address.phone },
-                theme: { color: '#2D5A27' },
+                theme: { color: '#563C8C' },
                 handler: async (response) => {
                     try {
                         const { data: verifyData } = await axios.post(
@@ -156,18 +216,23 @@ const Checkout = () => {
                             orderItems: selectedItems.map(item => ({
                                 template: item.template?._id || item.template,
                                 customizedJson: item.customizedJson || item.canvasJSON || {},
+                                userUploadedImages: item.userUploadedImages || [],
                                 finalImageUrl: item.finalImageUrl || item.finalDesignUrl || '',
                                 price: item.price,
                                 packingCharges: item.packingCharges || 0,
                                 shippingCharges: item.shippingCharges || 0,
-                                quantity: item.quantity || 1
+                                quantity: item.quantity || 1,
+                                gst: item.gst || 0
                             })),
                             shippingAddress: address,
-                            subtotal,
+                            subtotal: productBaseTotal,
+                            gstTotal,
                             packingChargesTotal,
                             shippingChargesTotal,
                             totalPrice,
-                            paymentResult: verifyData.paymentResult
+                            paymentMethod: 'razorpay',
+                            paymentResult: verifyData.paymentResult,
+                            isBuyNow: !!buyNowItem
                         };
 
                         const { data: createdOrder } = await axios.post(
@@ -176,11 +241,12 @@ const Checkout = () => {
                             { headers: { Authorization: `Bearer ${user.token}` } }
                         );
 
+                        setOrderPlaced(true);
                         if (buyNowItem) setBuyNowItem(null);
                         else await clearCart();
 
                         toast.success('🎉 Order placed successfully!');
-                        navigate(`/order-success/${createdOrder._id}`);
+                        navigate(`/order-success/${createdOrder._id}`, { replace: true });
                     } catch (err) {
                         toast.error('Order creation failed.');
                     } finally {
@@ -198,6 +264,11 @@ const Checkout = () => {
         }
     };
 
+    const handlePlaceOrder = () => {
+        if (paymentMethod === 'cod') handleCODOrder();
+        else handleRazorpayOrder();
+    };
+
     return (
         <div className="min-h-screen bg-slate-50/50 py-10 px-4">
             <div className="max-w-6xl mx-auto">
@@ -212,19 +283,19 @@ const Checkout = () => {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                    {/* LEFT COLUMN: Shipping & Address */}
+                    {/* LEFT COLUMN */}
                     <div className="lg:col-span-2 space-y-6">
                         {/* Progress Stepper */}
                         <div className="flex items-center gap-4 mb-2">
-                             <div className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest ${step === 1 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-green-600 text-white'}`}>
-                                 1. Shipping Address
-                             </div>
-                             <div className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest ${step === 2 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-gray-200 text-gray-400'}`}>
-                                 2. Payment Review
-                             </div>
+                            <div className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest ${step === 1 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-green-600 text-white'}`}>
+                                1. Shipping Address
+                            </div>
+                            <div className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest ${step === 2 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-gray-200 text-gray-400'}`}>
+                                2. Payment
+                            </div>
                         </div>
 
-                        {/* Step 1 Form */}
+                        {/* Step 1: Address Form */}
                         {step === 1 && (
                             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                                 <div className="p-8 grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -240,35 +311,148 @@ const Checkout = () => {
                                     <Field label="State" name="state" value={address.state} onChange={handleChange} error={errors.state} />
                                     <Field label="Pincode" name="pincode" value={address.pincode} onChange={handleChange} error={errors.pincode} maxLength={6} />
                                 </div>
-                                <div className="px-8 pb-8">
-                                    <button onClick={() => { if (validate()) setStep(2); }} className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg hover:-translate-y-0.5 transition-all text-sm uppercase tracking-widest">
-                                        Continue to Payment →
+                                <div className="px-8 pb-8 space-y-4">
+                                    <label className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 cursor-pointer group hover:bg-white hover:border-indigo-200 transition-all">
+                                        <input
+                                            type="checkbox"
+                                            checked={saveAddress}
+                                            onChange={(e) => setSaveAddress(e.target.checked)}
+                                            className="w-5 h-5 accent-indigo-600 transition-transform group-active:scale-90"
+                                        />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-black text-gray-800 tracking-tight uppercase">Save address for future use</span>
+                                            <span className="text-[10px] text-gray-400 font-bold uppercase">Safe & secure checkout next time</span>
+                                        </div>
+                                    </label>
+
+                                    <button 
+                                        onClick={async () => { 
+                                            if (validate()) {
+                                                if (saveAddress) {
+                                                    setSavingAddress(true);
+                                                    await updateProfile(address.fullName, user.email, {
+                                                        phone: address.phone,
+                                                        addressLine1: address.addressLine1,
+                                                        addressLine2: address.addressLine2,
+                                                        city: address.city,
+                                                        state: address.state,
+                                                        pincode: address.pincode
+                                                    });
+                                                    setSavingAddress(false);
+                                                }
+                                                setStep(2); 
+                                            }
+                                        }} 
+                                        disabled={savingAddress}
+                                        className="w-full py-4.5 bg-luxury-purple text-white font-black rounded-2xl shadow-xl shadow-luxury-purple/20 hover:-translate-y-0.5 transition-all text-sm uppercase tracking-widest flex items-center justify-center gap-2"
+                                    >
+                                        {savingAddress ? 'Saving Securely...' : 'Continue to Payment ↠'}
                                     </button>
                                 </div>
                             </div>
                         )}
 
-                        {/* Step 2 Review */}
+                        {/* Step 2: Payment Method */}
                         {step === 2 && (
-                            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-                                <div className="p-8">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <h3 className="font-black text-gray-900 uppercase text-xs tracking-widest">Shipping To:</h3>
-                                        <button onClick={() => setStep(1)} className="text-xs font-black text-indigo-600 underline">Change Address</button>
-                                    </div>
-                                    <div className="bg-slate-50 p-6 rounded-2xl space-y-3">
-                                        <div className="flex items-center gap-3">
-                                            <FaUser className="text-slate-400 text-xs" />
-                                            <p className="font-black text-slate-800">{address.fullName} <span className="text-slate-400 font-bold ml-2">| +91 {address.phone}</span></p>
+                            <div className="space-y-5">
+                                {/* Address summary */}
+                                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                                    <div className="p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="font-black text-gray-900 uppercase text-xs tracking-widest flex items-center gap-2">
+                                                <FaMapMarkerAlt className="text-indigo-500" /> Shipping To
+                                            </h3>
+                                            <button onClick={() => setStep(1)} className="text-xs font-black text-indigo-600 underline">Change</button>
                                         </div>
-                                        <div className="flex items-start gap-3">
-                                            <FaMapMarkerAlt className="text-slate-400 text-xs mt-1" />
-                                            <p className="text-slate-600 font-medium text-sm">
-                                                {address.addressLine1}, {address.addressLine2 ? `${address.addressLine2}, ` : ''} 
-                                                <span className="block">{address.city}, {address.state} — {address.pincode}</span>
-                                            </p>
+                                        <div className="bg-slate-50 p-4 rounded-2xl space-y-2">
+                                            <div className="flex items-center gap-3">
+                                                <FaUser className="text-slate-400 text-xs" />
+                                                <p className="font-black text-slate-800">{address.fullName} <span className="text-slate-400 font-bold ml-2">| +91 {address.phone}</span></p>
+                                            </div>
+                                            <div className="flex items-start gap-3">
+                                                <FaMapMarkerAlt className="text-slate-400 text-xs mt-1" />
+                                                <p className="text-slate-600 font-medium text-sm">
+                                                    {address.addressLine1}, {address.addressLine2 ? `${address.addressLine2}, ` : ''}
+                                                    <span className="block">{address.city}, {address.state} — {address.pincode}</span>
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Payment Method Selection */}
+                                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                                    <div className="p-6 border-b border-gray-50">
+                                        <h3 className="font-black text-gray-900 uppercase text-xs tracking-widest flex items-center gap-2">
+                                            <FaCreditCard className="text-indigo-500" /> Select Payment Method
+                                        </h3>
+                                    </div>
+                                    <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {/* Razorpay Option */}
+                                        <button
+                                            onClick={() => setPaymentMethod('razorpay')}
+                                            className={`relative flex flex-col items-center gap-3 p-6 rounded-2xl border-2 transition-all text-left group ${
+                                                paymentMethod === 'razorpay'
+                                                    ? 'border-indigo-500 bg-indigo-50 shadow-lg shadow-indigo-100'
+                                                    : 'border-gray-200 bg-gray-50 hover:border-indigo-300'
+                                            }`}
+                                        >
+                                            {paymentMethod === 'razorpay' && (
+                                                <div className="absolute top-3 right-3 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center">
+                                                    <FaCheckCircle className="text-white text-xs" />
+                                                </div>
+                                            )}
+                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm ${paymentMethod === 'razorpay' ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-400'}`}>
+                                                <FaCreditCard />
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="font-black text-gray-900 text-sm uppercase tracking-wide">Pay Online</p>
+                                                <p className="text-xs text-gray-500 font-medium mt-1">UPI, Cards, NetBanking, Wallets</p>
+                                                <div className="flex items-center justify-center gap-1 mt-2 text-[10px] font-bold text-green-600 uppercase tracking-widest">
+                                                    <FaShieldAlt size={8} /> Secure Payment
+                                                </div>
+                                            </div>
+                                        </button>
+
+                                        {/* COD Option */}
+                                        <button
+                                            onClick={() => setPaymentMethod('cod')}
+                                            className={`relative flex flex-col items-center gap-3 p-6 rounded-2xl border-2 transition-all text-left group ${
+                                                paymentMethod === 'cod'
+                                                    ? 'border-amber-500 bg-amber-50 shadow-lg shadow-amber-100'
+                                                    : 'border-gray-200 bg-gray-50 hover:border-amber-300'
+                                            }`}
+                                        >
+                                            {paymentMethod === 'cod' && (
+                                                <div className="absolute top-3 right-3 w-5 h-5 bg-amber-600 rounded-full flex items-center justify-center">
+                                                    <FaCheckCircle className="text-white text-xs" />
+                                                </div>
+                                            )}
+                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm ${paymentMethod === 'cod' ? 'bg-amber-500 text-white' : 'bg-white text-amber-400'}`}>
+                                                <FaMoneyBillWave />
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="font-black text-gray-900 text-sm uppercase tracking-wide">Cash on Delivery</p>
+                                                <p className="text-xs text-gray-500 font-medium mt-1">Pay when you receive the order</p>
+                                                <div className="flex items-center justify-center gap-1 mt-2 text-[10px] font-bold text-amber-600 uppercase tracking-widest">
+                                                    <MdLocalShipping size={10} /> Pay on Delivery
+                                                </div>
+                                            </div>
+                                        </button>
+                                    </div>
+
+                                    {/* COD notice */}
+                                    {paymentMethod === 'cod' && (
+                                        <div className="mx-6 mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
+                                            <FaMoneyBillWave className="text-amber-500 flex-shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs font-black text-amber-800 uppercase tracking-wide">Cash on Delivery Selected</p>
+                                                <p className="text-xs text-amber-700 font-medium mt-1">
+                                                    Please keep ₹{totalPrice.toLocaleString()} ready at the time of delivery. Our delivery partner will collect the payment.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -293,23 +477,22 @@ const Checkout = () => {
                             {/* Item List */}
                             <div className="p-6 space-y-4 max-h-[300px] overflow-y-auto bg-white">
                                 {selectedItems.map((item, i) => {
-                                    const combinedPrice = Number(item.price) + (Number(item.packingCharges) || 0);
                                     return (
                                         <div key={i} className="flex gap-4 p-4 rounded-3xl bg-slate-50/50 border border-slate-100 items-start">
-                                            <img 
-                                                src={item.finalImageUrl || item.finalDesignUrl || 'https://placehold.co/100'} 
+                                            <img
+                                                src={item.finalImageUrl || item.finalDesignUrl || 'https://placehold.co/100'}
                                                 className="w-16 h-16 rounded-xl object-cover bg-white border border-slate-100"
-                                                alt={item.template?.name} 
+                                                alt={item.template?.name}
                                             />
-                                                <div className="flex-1 min-w-0">
+                                            <div className="flex-1 min-w-0">
                                                 <p className="font-black text-slate-900 text-[13px] truncate uppercase">{item.template?.name || 'Product'}</p>
                                                 <div className="flex flex-col gap-1 mt-1">
-                                                    <span className="text-[10px] font-bold text-slate-500">Original Price: ₹{(Number(item.price) + (Number(item.packingCharges) || 0)).toLocaleString()}</span>
+                                                    <span className="text-[10px] font-bold text-slate-500">Unit Price: ₹{Math.round(Number(item.price) * (1 + (Number(item.gst) || 0) / 100)).toLocaleString()} (Incl. GST)</span>
                                                     <div className="flex items-center gap-2 mt-0.5">
                                                         <span className="text-[10px] font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-100">Qty: {item.quantity || 1}</span>
                                                     </div>
                                                 </div>
-                                                <p className="text-[14px] font-[1000] text-slate-900 mt-2">₹{(combinedPrice * (item.quantity || 1)).toLocaleString()}</p>
+                                                <p className="text-[14px] font-[1000] text-slate-900 mt-2">₹{Math.round((Number(item.price) * (1 + (Number(item.gst) || 0) / 100)) * (item.quantity || 1)).toLocaleString()}</p>
                                             </div>
                                         </div>
                                     );
@@ -323,9 +506,9 @@ const Checkout = () => {
                                         <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 text-[10px] shadow-sm">
                                             <FaBox />
                                         </div>
-                                        <span>Product Base Price</span>
+                                        <span>Product Cost (Incl. GST)</span>
                                     </div>
-                                    <span className="text-slate-900">₹{subtotal.toLocaleString()}</span>
+                                    <span className="text-slate-900">₹{Math.round(subtotalWithGst).toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-[12px] font-bold text-slate-500 uppercase tracking-widest">
                                     <div className="flex items-center gap-3">
@@ -355,21 +538,35 @@ const Checkout = () => {
                                             <p className="text-[9px] text-slate-400 font-bold italic uppercase tracking-tighter">(Taxes Included)</p>
                                         </div>
                                         <p className="text-[40px] font-[1000] text-[#2D5A27] leading-[0.8] tracking-tighter">
-                                            ₹{totalPrice.toLocaleString()}
+                                            ₹{Math.round(totalPrice).toLocaleString()}
                                         </p>
                                     </div>
                                 </div>
 
-                                {/* Payment Button */}
+                                {/* Payment Badge */}
+                                {step === 2 && paymentMethod === 'cod' && (
+                                    <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+                                        <FaMoneyBillWave className="text-amber-500" size={12} />
+                                        <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Pay on Delivery</span>
+                                    </div>
+                                )}
+
+                                {/* CTA Button */}
                                 <div className="mt-8">
                                     {step === 2 ? (
                                         <button
-                                            onClick={handlePayNow}
+                                            onClick={handlePlaceOrder}
                                             disabled={paymentLoading}
-                                            className="w-full py-5 bg-[#2D5A27] text-white font-black rounded-3xl shadow-xl shadow-green-900/10 hover:-translate-y-1 transition-all disabled:opacity-50 flex items-center justify-center gap-3 uppercase tracking-widest text-[13px]"
+                                            className={`w-full py-5 text-white font-black rounded-3xl shadow-xl hover:-translate-y-1 transition-all disabled:opacity-50 flex items-center justify-center gap-3 uppercase tracking-widest text-[13px] ${
+                                                paymentMethod === 'cod'
+                                                    ? 'bg-luxury-gold hover:bg-luxury-gold-dark shadow-luxury-gold/20'
+                                                    : 'bg-luxury-purple hover:bg-luxury-purple-dark shadow-luxury-purple/20'
+                                            }`}
                                         >
                                             {paymentLoading ? (
                                                 <span className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                                            ) : paymentMethod === 'cod' ? (
+                                                <><FaMoneyBillWave size={12} /> Place COD Order – ₹{totalPrice.toLocaleString()}</>
                                             ) : (
                                                 <><FaLock size={12} /> Pay ₹{totalPrice.toLocaleString()} Securely</>
                                             )}

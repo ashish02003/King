@@ -53,11 +53,11 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
-    const updateProfile = async (name, email) => {
+    const updateProfile = async (name, email, shippingAddress) => {
         try {
             const { data } = await axios.put(
                 `${API_BASE}/auth/profile`,
-                { name, email },
+                { name, email, shippingAddress },
                 { headers: { Authorization: `Bearer ${user.token}` } }
             );
             const updatedUser = { ...data, token: user.token };

@@ -6,7 +6,7 @@
 // export const uploadImage = async (file) => {
 //     const formData = new FormData();
 //     formData.append('image', file);
-    
+
 //     const response = await axios.post(`${API_URL}/upload`, formData);
 //     return response.data.url;
 // };
@@ -27,10 +27,10 @@
 //     try {
 //         // Step 1: Upload original image
 //         const originalUrl = await uploadImage(file);
-        
+
 //         // Step 2: Clip to shape
 //         const clippedData = await clipImageToShape(originalUrl, shapeType, width, height);
-        
+
 //         return {
 //             originalUrl,
 //             clippedUrl: clippedData.clippedUrl,
@@ -77,7 +77,7 @@ import { API_BASE as API_URL } from './api';
 export const uploadImage = async (file, onProgress) => {
     const formData = new FormData();
     formData.append('image', file);
-    
+
     const response = await axios.post(`${API_URL}/upload`, formData, {
         onUploadProgress: (progressEvent) => {
             if (onProgress && progressEvent.total) {
@@ -109,12 +109,12 @@ export const processImageForShape = async (file, shapeData, onProgress) => {
             }
         };
         const originalUrl = await uploadImage(file, uploadProgress);
-        
+
         // Step 2: Send to backend for shape clipping (70-100% progress)
         if (onProgress) onProgress(85);
         const clippedData = await clipImageToShape(originalUrl, shapeData);
         if (onProgress) onProgress(100);
-        
+
         return {
             originalUrl,
             clippedUrl: clippedData.clippedUrl,

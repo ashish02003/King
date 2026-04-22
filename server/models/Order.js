@@ -14,6 +14,10 @@ const orderItemSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    slotAssets: {
+        type: Object
+    },
+    userUploadedImages: [String],
     price: {           // base product price per unit
         type: Number,
         required: true

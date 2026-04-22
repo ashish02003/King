@@ -1,21 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import mylogo from '../assets/Mimitiinaa_Logo.svg';
 import {
-    FiGrid,
-    FiShoppingCart,
-    FiBox,
-    FiLayers,
-    FiUsers,
-    FiMessageSquare,
-    FiTrendingUp,
-    FiFileText,
-    FiSettings,
-    FiLogOut,
-    FiSearch,
-    FiBell,
-    FiMenu
-} from 'react-icons/fi';
+    LayoutDashboard,
+    ShoppingBag,
+    Layers,
+    Box,
+    Users,
+    Settings,
+    LogOut,
+    Search,
+    Bell,
+    Menu,
+    X,
+    ChevronRight,
+    ChevronLeft,
+    HelpCircle,
+    UserCircle,
+    PanelLeftClose,
+    PanelLeftOpen
+} from 'lucide-react';
 
 const AdminLayout = () => {
     const { user, logout } = useAuth();
@@ -23,201 +29,261 @@ const AdminLayout = () => {
     const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [scrolled, setScrolled] = useState(false);
+
+    useEffect(() => {
+        const handleScroll = () => setScrolled(window.scrollY > 10);
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     const handleLogout = () => {
         logout();
-        navigate('/login');
+        navigate('/admin/login');
+    };
+
+    const toggleCollapse = (e) => {
+        e.stopPropagation();
+        setIsCollapsed(prev => !prev);
     };
 
     const sidebarItems = [
-        { path: '/admin/dashboard', icon: <FiGrid />, label: 'Dashboard' },
-        { path: '/admin/orders', icon: <FiShoppingCart />, label: 'Orders' },
-        { path: '/admin/categories', icon: <FiLayers />, label: 'Categories' },
-        { path: '/admin/products', icon: <FiBox />, label: 'Products' },
-        { path: '/admin/users', icon: <FiUsers />, label: 'Customers' },
-    ];
-
-    const bottomItems = [
-        { path: '/admin/settings', icon: <FiSettings />, label: 'Settings' },
+        { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Overview' },
+        { path: '/admin/orders', icon: ShoppingBag, label: 'Orders' },
+        { path: '/admin/categories', icon: Layers, label: 'Categories' },
+        { path: '/admin/products', icon: Box, label: 'Products' },
+        { path: '/admin/users', icon: Users, label: 'Customers' },
     ];
 
     const NavItem = ({ item }) => {
-        const isActive = location.pathname === item.path;
+        const isActive = location.pathname === item.path || (item.path !== '/admin/dashboard' && location.pathname.startsWith(item.path));
+        const Icon = item.icon;
+
         return (
             <Link
                 to={item.path}
-                className={`flex items-center gap-4 px-6 py-3 my-1 transition-all
-                    ${isActive 
-                        ? 'bg-[#F2EFFD] text-[#6B46C1] border-r-4 border-[#6B46C1] font-[800]' 
-                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700 font-semibold'
-                    } ${isCollapsed ? 'justify-center border-r-0 rounded-xl mx-2 px-0 w-12 h-12' : ''}`}
+                className={`relative flex items-center gap-3 px-3 py-2.5 my-0.5 transition-all duration-300 group
+                    ${isActive
+                        ? 'bg-luxury-purple/10 text-luxury-purple-dark border-l-4 border-luxury-purple'
+                        : 'text-slate-500 hover:bg-luxury-cream hover:text-luxury-purple border-l-4 border-transparent'
+                    } ${isCollapsed ? 'justify-center mx-1' : 'mx-1'}`}
                 title={isCollapsed ? item.label : ''}
             >
-                <span className={`text-xl ${isActive ? 'text-[#6B46C1]' : 'text-gray-400 group-hover:text-gray-600'}`}>
-                    {item.icon}
-                </span>
-                {!isCollapsed && <span className="text-[14px]">{item.label}</span>}
+                <Icon size={isCollapsed ? 20 : 18} className={`flex-shrink-0 transition-transform duration-300 ${!isActive && 'group-hover:scale-110'}`} />
+
+                {!isCollapsed && (
+                    <span className="text-sm font-medium whitespace-nowrap overflow-hidden">
+                        {item.label}
+                    </span>
+                )}
+
+                {isActive && !isCollapsed && (
+                    <motion.div
+                        layoutId="active-pill"
+                        className="ml-auto"
+                        initial={{ opacity: 0, x: -5 }}
+                        animate={{ opacity: 1, x: 0 }}
+                    >
+                        <ChevronRight size={14} className="opacity-50" />
+                    </motion.div>
+                )}
             </Link>
         );
     };
 
-    // Sidebar width logic
-    const sidebarWidth = isCollapsed ? 'w-[80px]' : 'w-[260px]';
-
     return (
-        <div className="flex bg-[#F8F9FB] min-h-screen font-sans">
-            {/* Sidebar Desktop */}
-            <aside 
-                className={`hidden lg:flex flex-col bg-white border-r border-[#Eef0f4] fixed top-0 left-0 bottom-0 z-20 transition-all duration-300 ${sidebarWidth}`}
+        <div className="flex bg-luxury-cream min-h-screen text-slate-800 font-sans selection:bg-luxury-purple/10 selection:text-luxury-purple-dark">
+            {/* Desktop Sidebar */}
+            <motion.aside
+                initial={false}
+                animate={{ width: isCollapsed ? 70 : 260 }}
+                className="hidden lg:flex flex-col bg-white border-r border-slate-100 fixed top-0 left-0 bottom-0 z-50 shadow-[10px_0_40px_rgba(0,0,0,0.02)]"
             >
-                {/* Logo Area */}
-                <div className={`h-20 flex items-center border-b border-transparent ${isCollapsed ? 'justify-center px-0' : 'px-8 justify-between'}`}>
-                    {!isCollapsed && (
-                        <h1 className="text-2xl font-[1000] text-gray-900 tracking-tight flex items-center gap-2">
-                            <span className="text-[#6B46C1]"><FiBox /></span> Mimitiinaa
-                        </h1>
-                    )}
-                    <button 
-                        onClick={() => setIsCollapsed(!isCollapsed)} 
-                        className={`p-2 text-gray-400 hover:text-[#6B46C1] hover:bg-gray-50 rounded-lg transition-all ${isCollapsed ? '' : ''}`}
+                {/* Brand Logo + Top Collapse Button */}
+                <div className={`h-16 flex items-center ${isCollapsed ? 'justify-center flex-col gap-1 px-2' : 'px-4 justify-between border-b border-slate-50'}`}>
+                    <AnimatePresence mode="wait">
+                        {!isCollapsed ? (
+                            <motion.div
+                                key="full-logo"
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="flex items-center gap-3"
+                            >
+                                <div className="flex items-center gap-2.5 overflow-hidden">
+                                    <img src={mylogo} alt="Mimitiinaa" className="h-6 sm:h-7 w-auto object-contain flex-shrink-0" />
+                                    <span className="text-base sm:text-[1.1rem] font-black bg-gradient-to-r from-luxury-purple-dark to-luxury-purple bg-clip-text text-transparent tracking-tight leading-none mt-0.5 truncate">
+                                        Mimitiinaa
+                                    </span>
+                                </div>
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key="collapsed-logo"
+                                initial={{ opacity: 0, scale: 0.5 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.5 }}
+                                className="flex items-center justify-center h-8"
+                            >
+                                <img src={mylogo} alt="M" className="h-6 w-auto object-contain" />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Top Collapse Toggle Button */}
+                    <button
+                        onClick={toggleCollapse}
+                        title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+                        className={`flex items-center justify-center w-8 h-8 rounded-md text-slate-400 hover:text-luxury-purple hover:bg-luxury-purple/10 transition-all duration-200 flex-shrink-0 ${isCollapsed ? 'mt-1' : ''}`}
                     >
-                        <FiMenu size={22} />
+                        {isCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
                     </button>
                 </div>
 
-                {/* Main Nav with hidden scrollbar */}
-                <nav className="flex-1 mt-6 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    {sidebarItems.map((item, index) => (
-                        <NavItem key={index} item={item} />
-                    ))}
-                    
-                    <div className={`py-4 mt-4 border-t border-gray-50 ${isCollapsed ? 'px-2' : 'px-6'}`}>
-                        {!isCollapsed && <p className="text-xs uppercase font-bold text-gray-300 tracking-widest mb-2 px-0">Others</p>}
-                        
-                        <Link to="#" className={`flex items-center gap-4 py-3 text-gray-500 hover:hover:text-gray-700 font-semibold transition-all group ${isCollapsed ? 'justify-center rounded-xl w-12 h-12 hover:bg-gray-50 mx-auto' : 'px-0'}`} title={isCollapsed ? "Messages" : ""}>
-                            <span className="text-xl text-gray-400 group-hover:text-gray-600"><FiMessageSquare /></span>
-                            {!isCollapsed && <span className="text-[14px]">Messages / Chat</span>}
-                        </Link>
-                        
-                        <Link to="#" className={`flex items-center gap-4 py-3 text-gray-500 hover:hover:text-gray-700 font-semibold transition-all group ${isCollapsed ? 'justify-center rounded-xl w-12 h-12 hover:bg-gray-50 mx-auto' : 'px-0'}`} title={isCollapsed ? "Campaigns" : ""}>
-                            <span className="text-xl text-gray-400 group-hover:text-gray-600"><FiTrendingUp /></span>
-                            {!isCollapsed && <span className="text-[14px]">Marketing / Campaigns</span>}
-                        </Link>
-                        
-                        <Link to="#" className={`flex items-center gap-4 py-3 text-gray-500 hover:hover:text-gray-700 font-semibold transition-all group ${isCollapsed ? 'justify-center rounded-xl w-12 h-12 hover:bg-gray-50 mx-auto' : 'px-0'}`} title={isCollapsed ? "Reports" : ""}>
-                            <span className="text-xl text-gray-400 group-hover:text-gray-600"><FiFileText /></span>
-                            {!isCollapsed && <span className="text-[14px]">Reports</span>}
+                {/* Primary Navigation */}
+                <div className="flex-1 mt-1 overflow-y-auto px-1 custom-scrollbar">
+                    <div className="mb-8">
+                        {!isCollapsed && <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-4 mb-4">Management</p>}
+                        {sidebarItems.map((item, index) => (
+                            <NavItem key={index} item={item} />
+                        ))}
+                    </div>
+
+                    <div className="mb-4">
+                        {!isCollapsed && <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-4 mb-4">Settings</p>}
+                        <NavItem item={{ path: '/admin/settings', icon: Settings, label: 'Settings' }} />
+                        <Link to="#" className={`flex items-center gap-3 px-3 py-2.5 transition-all duration-300 text-slate-500 hover:bg-luxury-cream hover:text-luxury-purple group border-l-4 border-transparent ${isCollapsed ? 'justify-center mx-1' : 'mx-1'}`}>
+                            <HelpCircle size={isCollapsed ? 20 : 18} className="group-hover:rotate-12 transition-transform" />
+                            {!isCollapsed && <span className="text-sm font-medium">Support Desk</span>}
                         </Link>
                     </div>
-                </nav>
+                </div>
 
-                {/* Bottom Nav */}
-                <div className="mb-6 border-t border-gray-50 pt-2">
-                    {bottomItems.map((item, index) => (
-                        <NavItem key={index} item={item} />
-                    ))}
-                    <button 
+                {/* Sidebar Footer — Logout only, no Collapse button here */}
+                <div className="p-4 border-t border-slate-50 space-y-2">
+                    <button
                         onClick={handleLogout}
-                        className={`flex items-center gap-4 py-3 my-1 text-left text-gray-500 hover:text-red-600 font-semibold transition-all group ${isCollapsed ? 'justify-center rounded-xl w-12 h-12 hover:bg-red-50 mx-auto mx-2' : 'px-6 w-full hover:bg-red-50'}`}
-                        title={isCollapsed ? "Log out" : ""}
+                        className={`flex items-center gap-3 p-3 w-full bg-slate-50 text-slate-500 hover:bg-red-600 hover:text-white font-semibold text-sm transition-all duration-300 group ${isCollapsed ? 'justify-center' : ''}`}
                     >
-                        <span className="text-xl text-gray-400 group-hover:text-red-500"><FiLogOut /></span>
-                        {!isCollapsed && <span className="text-[14px]">Log out</span>}
+                        <LogOut size={16} className="group-hover:-translate-x-1 transition-transform flex-shrink-0" />
+                        {!isCollapsed && <span>Logout</span>}
                     </button>
                 </div>
-            </aside>
+            </motion.aside>
 
-            {/* Mobile Sidebar Backstop */}
-            {isMobileMenuOpen && (
-                <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
-            )}
-
-            {/* Mobile Sidebar Panel (Always expanded when open) */}
-            <aside className={`fixed inset-y-0 left-0 z-40 w-[260px] bg-white transform transition-transform duration-300 lg:hidden flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                <div className="h-20 flex items-center px-8 border-b border-[#Eef0f4] justify-between">
-                    <h1 className="text-2xl font-[1000] text-gray-900 tracking-tight flex items-center gap-2">
-                        <span className="text-[#6B46C1]"><FiBox /></span> Mimitiinaa
-                    </h1>
-                </div>
-                <nav className="flex-1 mt-6 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    {sidebarItems.map((item, index) => (
-                        <Link
-                            key={index}
-                            to={item.path}
+            {/* Mobile Sidebar */}
+            <AnimatePresence>
+                {isMobileMenuOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] lg:hidden"
                             onClick={() => setIsMobileMenuOpen(false)}
-                            className={`flex items-center gap-4 px-6 py-3 my-1 transition-all ${location.pathname === item.path ? 'bg-[#F2EFFD] text-[#6B46C1] border-r-4 border-[#6B46C1] font-[800]' : 'text-gray-500 hover:bg-gray-50 font-semibold'}`}
+                        />
+                        <motion.aside
+                            initial={{ x: '-100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '-100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 180 }}
+                            className="fixed inset-y-0 left-0 z-[110] w-[280px] bg-white lg:hidden flex flex-col p-6 shadow-2xl"
                         >
-                            <span className={`text-xl ${location.pathname === item.path ? 'text-[#6B46C1]' : 'text-gray-400'}`}>{item.icon}</span>
-                            <span className="text-[14px]">{item.label}</span>
-                        </Link>
-                    ))}
-                    <div className="px-6 py-4 mt-4 border-t border-gray-50">
-                        <p className="text-xs uppercase font-bold text-gray-300 tracking-widest mb-2">Others</p>
-                        <Link to="#" className="flex items-center gap-4 py-3 text-gray-500 font-semibold transition-all"><span className="text-xl text-gray-400"><FiMessageSquare /></span><span className="text-[14px]">Messages / Chat</span></Link>
-                        <Link to="#" className="flex items-center gap-4 py-3 text-gray-500 font-semibold transition-all"><span className="text-xl text-gray-400"><FiTrendingUp /></span><span className="text-[14px]">Marketing / Campaigns</span></Link>
-                        <Link to="#" className="flex items-center gap-4 py-3 text-gray-500 font-semibold transition-all"><span className="text-xl text-gray-400"><FiFileText /></span><span className="text-[14px]">Reports</span></Link>
-                    </div>
-                </nav>
-                <div className="mb-6 border-t border-gray-50 pt-2">
-                    <Link to="/admin/settings" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-4 px-6 py-3 my-1 transition-all ${location.pathname.includes('/admin/settings') ? 'bg-[#F2EFFD] text-[#6B46C1] border-r-4 border-[#6B46C1] font-[800]' : 'text-gray-500 hover:bg-gray-50 font-semibold'}`}>
-                        <span className={`text-xl ${location.pathname.includes('/admin/settings') ? 'text-[#6B46C1]' : 'text-gray-400'}`}><FiSettings /></span>
-                        <span className="text-[14px]">Settings</span>
-                    </Link>
-                    
-                    <button onClick={handleLogout} className="flex items-center gap-4 px-6 py-3 my-1 w-full text-left text-gray-500 hover:bg-red-50 hover:text-red-500 font-semibold transition-all">
-                        <span className="text-xl text-gray-400"><FiLogOut /></span>
-                        <span className="text-[14px]">Log out</span>
-                    </button>
-                </div>
-            </aside>
+                            <div className="flex items-center justify-between mb-8">
+                                <div className="flex items-center gap-2 min-w-0 pr-2">
+                                    <img src={mylogo} alt="Mimitiinaa" className="h-6 w-auto object-contain flex-shrink-0" />
+                                    <span className="text-lg font-black bg-gradient-to-r from-luxury-purple-dark to-luxury-purple bg-clip-text text-transparent tracking-tight truncate">Mimitiinaa</span>
+                                </div>
+                                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-slate-50 text-slate-400 flex-shrink-0 rounded-md">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <nav className="space-y-2">
+                                {sidebarItems.map((item, index) => (
+                                    <Link
+                                        key={index}
+                                        to={item.path}
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className={`flex items-center gap-4 px-6 py-3 transition-all text-sm font-medium ${location.pathname === item.path ? 'bg-slate-900 text-white' : 'text-slate-500 border border-slate-100 hover:bg-slate-50'}`}
+                                    >
+                                        <item.icon size={18} />
+                                        <span>{item.label}</span>
+                                    </Link>
+                                ))}
+                            </nav>
+                            <div className="mt-auto pt-6 border-t border-slate-100">
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center gap-4 px-6 py-3 w-full text-sm font-medium text-red-500 hover:bg-red-50 transition-all"
+                                >
+                                    <LogOut size={18} />
+                                    <span>Logout</span>
+                                </button>
+                            </div>
+                        </motion.aside>
+                    </>
+                )}
+            </AnimatePresence>
 
-            {/* Main Content */}
-            <main className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isCollapsed ? 'lg:ml-[80px]' : 'lg:ml-[260px]'} z-10`}>
-                {/* Header Navbar */}
-                <header className="h-20 bg-white shadow-sm flex items-center justify-between px-4 sm:px-8 sticky top-0 z-10 w-full border-b border-gray-100">
-                    
-                    {/* Menu and Search Container */}
-                    <div className="flex items-center gap-4 w-full max-w-xl">
-                        {/* Mobile Menu Button */}
-                        <button 
-                            className="lg:hidden p-2 text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+            {/* Content Area */}
+            <main className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isCollapsed ? 'lg:ml-[70px]' : 'lg:ml-[260px]'}`}>
+                {/* Header */}
+                <header className={`h-16 sticky top-0 z-40 transition-all duration-300 px-3 sm:px-10 flex items-center justify-between
+                    ${scrolled ? 'bg-white/80 backdrop-blur-xl border-b border-slate-100 shadow-sm' : 'bg-transparent'}`}
+                >
+                    <div className="flex items-center gap-2 sm:gap-4 w-full max-w-lg min-w-0">
+                        <button
+                            className="lg:hidden p-2 sm:p-3 text-slate-600 bg-white shadow-sm border border-slate-100 hover:bg-slate-50 transition-colors flex-shrink-0 rounded-md"
                             onClick={() => setIsMobileMenuOpen(true)}
                         >
-                            <FiMenu size={22} />
+                            <Menu size={20} />
                         </button>
+                        
+                        {/* Mobile Logo in Header */}
+                        <div className="lg:hidden flex items-center gap-2 pr-2 min-w-0">
+                            <img src={mylogo} alt="Mimitiinaa" className="h-6 w-auto object-contain flex-shrink-0" />
+                            <span className="text-base sm:text-lg font-black bg-gradient-to-r from-indigo-950 to-indigo-600 bg-clip-text text-transparent tracking-tight truncate">Mimitiinaa</span>
+                        </div>
 
-                        {/* Search Bar */}
-                        <div className="hidden sm:flex relative w-full">
-                            <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
-                            <input 
-                                type="text" 
-                                placeholder="Search anything..." 
-                                className="w-full bg-gray-50 border-transparent rounded-full py-2.5 pl-12 pr-4 text-sm font-semibold text-gray-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#6B46C1]/20 focus:border-[#6B46C1] transition-all"
+                        <div className="hidden sm:flex relative items-center group w-full">
+                            <Search size={18} className="absolute left-4 text-slate-400 pointer-events-none group-focus-within:text-luxury-purple transition-colors" />
+                            <input
+                                type="text"
+                                placeholder="Search..."
+                                className="w-full bg-white border border-slate-100 py-2.5 pl-12 pr-4 text-sm font-medium text-slate-900 shadow-sm placeholder:text-slate-300 focus:outline-none focus:ring-4 focus:ring-luxury-purple/10 focus:border-luxury-purple transition-all rounded-md"
                             />
+                            <div className="absolute right-4 px-2 py-0.5 border border-slate-100 bg-slate-50 text-[10px] text-slate-400 font-semibold shadow-inner rounded-sm">⌘ K</div>
                         </div>
                     </div>
 
-                    {/* Right Actions */}
-                    <div className="flex items-center gap-3 sm:gap-6 ml-auto">
-                        <button className="text-gray-400 hover:text-[#6B46C1] hover:bg-gray-50 p-2 rounded-full transition-all">
-                            <FiSettings className="text-xl" />
+                    <div className="flex items-center gap-2 sm:gap-4 ml-auto pl-2 flex-shrink-0">
+                        <div className="hidden md:flex flex-col items-end mr-2 text-right">
+                            <span className="text-sm font-bold text-slate-900 leading-none">{user?.name}</span>
+                            <span className="text-xs font-medium text-luxury-purple mt-1">Prime Admin</span>
+                        </div>
+
+                        <button className="relative w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center text-slate-400 bg-white border border-slate-100 hover:bg-slate-50 transition-all shadow-sm rounded-md">
+                            <Bell size={18} />
+                            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 border-2 border-white"></span>
                         </button>
-                        <button className="relative text-gray-400 hover:text-[#6B46C1] hover:bg-gray-50 p-2 rounded-full transition-all">
-                            <FiBell className="text-xl" />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 border border-white rounded-full"></span>
-                        </button>
-                        <Link to="/admin/settings" className="w-10 h-10 rounded-full bg-gray-200 border-2 border-white shadow-sm overflow-hidden flex items-center justify-center cursor-pointer hover:border-[#6B46C1] transition-all">
+
+                        {/* Profile photo → navigates to Settings (Profile+Password page) */}
+                        <button
+                            onClick={() => navigate('/admin/settings')}
+                            className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 border-2 border-white shadow-md overflow-hidden flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all"
+                            title="Profile & Settings"
+                        >
                             {user?.avatar ? (
-                                <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+                                <img src={user.avatar} alt="Profile" className="w-full h-full rounded object-cover" />
                             ) : (
-                                <span className="font-bold text-gray-600">{user?.name?.charAt(0) || 'A'}</span>
+                                <UserCircle size={24} className="text-luxury-purple-light" />
                             )}
-                        </Link>
+                        </button>
                     </div>
                 </header>
 
-                {/* Page Content */}
-                <div className="p-4 sm:p-8 pb-12 overflow-x-hidden min-h-[calc(100vh-80px)]">
+                {/* App Viewport */}
+                <div className="p-3 sm:p-6 lg:p-8 pb-16">
                     <Outlet />
                 </div>
             </main>
@@ -226,4 +292,3 @@ const AdminLayout = () => {
 };
 
 export default AdminLayout;
-

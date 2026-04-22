@@ -139,6 +139,10 @@ const templateSchema = new mongoose.Schema({
         height: Number,
         angle: Number
     },
+    // 🔥 NEW: Array of extra gallery image URLs
+    galleryImages: [{
+        type: String
+    }],
     basePrice: {
         type: Number,
         required: true,
@@ -182,7 +186,7 @@ const templateSchema = new mongoose.Schema({
     // 🔥 NEW: Wrap type for cylindrical product preview (mug, bottle, etc.)
     wrapType: {
         type: String,
-        enum: ['none', 'mug', 'bottle'],
+        enum: ['none', 'mug', 'bottle', 'phone'],
         default: 'none'
     },
 
@@ -208,7 +212,43 @@ const templateSchema = new mongoose.Schema({
     benefits: {
         type: [String],
         default: []  // e.g. ['BPA Free', 'Dishwasher safe']
-    }
+    },
+    gst: {
+        type: Number,
+        default: 0   // GST percentage
+    },
+    // 🔥 NEW: High-Quality Mockup Previews
+    mockupViews: [{
+        viewName: { type: String, default: 'Default View' }, // e.g., 'Front', 'Left', 'Right', 'Perspective'
+        backgroundUrl: { type: String, required: true },     // The photographic mockup image
+        overlayUrl: { type: String },                        // Optional highlights/shadows layer
+        side: {
+            type: String,
+            enum: ['left', 'center', 'right'],
+            default: 'center'
+        },
+        shapeType: {
+            type: String,
+            enum: ['rectangle', 'rounded', 'circle', 'heart', 'mug-wrap'],
+            default: 'rectangle'
+        },
+        // Coordinates on the mockup background where the design should be placed
+        placement: {
+            x: { type: Number, required: true },
+            y: { type: Number, required: true },
+            width: { type: Number, required: true },
+            height: { type: Number, required: true },
+            angle: { type: Number, default: 0 },
+            curve: { type: Number, default: 0 }             // Simple bend/warp factor
+        },
+        // Optional transform for fitting side mockup background image
+        bgTransform: {
+            zoom: { type: Number, default: 1 },
+            offsetX: { type: Number, default: 0 }, // percentage-ish offset (-1..1 recommended)
+            offsetY: { type: Number, default: 0 }
+        },
+        customPath: { type: String } // For custom shapes - SVG path or polygon points
+    }]
 }, { timestamps: true });
 
 

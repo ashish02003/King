@@ -339,7 +339,7 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE } from '../utils/api';
 import { FaSearch, FaChevronRight, FaFacebookF, FaTwitter, FaInstagram, FaWhatsapp, FaEnvelope, FaMapMarkerAlt, FaPhoneAlt } from 'react-icons/fa';
 import CategoryCard from '../components/CategoryCard';
@@ -361,9 +361,11 @@ const FLOAT_ITEMS = [
 ];
 
 const Home = () => {
+    const navigate = useNavigate();
     const [templates, setTemplates] = useState([]);
     const [categories, setCategories] = useState([]);
     const [showAllCategories, setShowAllCategories] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -374,7 +376,7 @@ const Home = () => {
                 ]);
                 const catsInStock = categoriesRes.data.filter(cat => cat.stock > 0);
                 const inStockCatNames = catsInStock.map(c => c.name);
-                
+
                 setTemplates(templatesRes.data.filter(t => inStockCatNames.includes(t.category)));
                 setCategories(catsInStock);
             } catch (error) {
@@ -405,7 +407,7 @@ const Home = () => {
         }, { threshold: 0.07 });
         els.forEach(el => io.observe(el));
         return () => io.disconnect();
-    }, [templates, categories]);
+    }, [templates, categories, showAllCategories]);
 
     // Group templates by category
     const templatesByCategory = categories.reduce((acc, category) => {
@@ -463,7 +465,7 @@ const Home = () => {
                     100% { background-position: 200% 0; }
                 }
                 .text-shimmer {
-                    background: linear-gradient(90deg, #BFA75D, #D9C5A3, #BFA75D);
+                    background: linear-gradient(90deg, #30174D, #563C8C, #A189CC, #563C8C, #30174D);
                     background-size: 200% auto;
                     -webkit-background-clip: text;
                     -webkit-text-fill-color: transparent;
@@ -529,18 +531,18 @@ const Home = () => {
 
                 /* Trust pill */
                 .pc-trust { transition:transform .3s, box-shadow .3s, border-color .3s !important; }
-                .pc-trust:hover { transform:translateY(-3px) !important; box-shadow:0 8px 24px rgba(191,167,93,.14) !important; border-color:#BFA75D !important; }
+                .pc-trust:hover { transform:translateY(-3px) !important; box-shadow:0 8px 24px rgba(86,60,140,.14) !important; border-color:#563C8C !important; }
 
                 /* Footer link */
                 .pc-fl { display:flex; align-items:center; gap:0; transition:color .25s, gap .3s; }
-                .pc-fl::before { content:''; width:0; height:1.5px; background:#BFA75D; transition:width .3s; flex-shrink:0; }
+                .pc-fl::before { content:''; width:0; height:1.5px; background:#563C8C; transition:width .3s; flex-shrink:0; }
                 .pc-fl:hover { gap:10px !important; }
                 .pc-fl:hover::before { width:14px; }
 
                 /* Search bar focus ring */
                 .pc-search-wrap:focus-within {
-                    border-color:#BFA75D !important;
-                    box-shadow:0 0 0 4px rgba(191,167,93,0.1) !important;
+                    border-color:#563C8C !important;
+                    box-shadow:0 0 0 4px rgba(86,60,140,0.1) !important;
                 }
 
                 @keyframes drift {
@@ -573,39 +575,39 @@ const Home = () => {
             {/* ══════════════════════════════════════════════════════
                 1. Premium Hero Section - Refined & Search-Free
             ══════════════════════════════════════════════════════ */}
-            <div className="relative overflow-hidden bg-luxury-cream pt-12 pb-24 md:pt-28 md:pb-40">
+            <div className="relative overflow-hidden bg-gradient-to-b from-[#f3f0ff] to-luxury-cream pt-12 pb-24 md:pt-28 md:pb-40">
                 {/* Background Blobs */}
-                <div className="luxury-blob bg-[#2D5A27]/20 top-[-10%] left-[-5%] animate-float"></div>
-                <div className="luxury-blob bg-[#BFA75D]/15 bottom-[-5%] right-[-10%] animate-float" style={{ animationDelay: '-10s' }}></div>
-                <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[600px] h-[600px] bg-luxury-gold-light/20 rounded-full blur-[100px] animate-blob"></div>
-                <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-[500px] h-[500px] bg-luxury-blue-light/10 rounded-full blur-[100px] animate-blob" style={{ animationDelay: '2s' }}></div>
+                <div className="luxury-blob bg-luxury-purple/20 top-[-10%] left-[-5%] animate-float"></div>
+                <div className="luxury-blob bg-luxury-purple/10 bottom-[-5%] right-[-10%] animate-float" style={{ animationDelay: '-10s' }}></div>
+                <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[600px] h-[600px] bg-luxury-purple/15 rounded-full blur-[100px] animate-blob"></div>
+                <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-[500px] h-[500px] bg-luxury-purple-light/10 rounded-full blur-[100px] animate-blob" style={{ animationDelay: '2s' }}></div>
 
                 <div className="container mx-auto px-6 max-w-7xl relative z-10">
                     <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
 
                         {/* Left: Text Content */}
                         <div className="lg:w-1/2 flex flex-col items-start text-center lg:text-left">
-                            <span className="rise rise-1 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white shadow-sm border border-luxury-gold-light/20 text-[#2D5A27] text-[11px] font-black uppercase tracking-[0.2em] mb-8 mx-auto lg:mx-0">
-                                <span className="w-2 h-2 rounded-full bg-[#2D5A27] animate-pulse"></span>
+                            <span className="rise rise-1 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-luxury-purple/10 shadow-sm border border-luxury-purple/20 text-luxury-purple text-[11px] font-black uppercase tracking-[0.2em] mb-8 mx-auto lg:mx-0">
+                                <span className="w-2 h-2 rounded-full bg-luxury-purple animate-pulse"></span>
                                 New Arrival: Premium Photo Frames
                             </span>
 
-                            <h1 className="rise rise-2 fraunces mb-6 hero-title" style={{ fontSize: 'clamp(44px, 7vw, 92px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 0.95 }}>
+                            <h1 className="rise rise-2 fraunces mb-6 hero-title" style={{ fontSize: 'clamp(44px, 7vw, 92px)', fontWeight: 900, color: '#422D6B', letterSpacing: '-0.03em', lineHeight: 0.95 }}>
                                 Your Stories, <br />
                                 <span className="text-shimmer italic">Perfectly</span> <br />
-                                <span style={{ color: '#0f172a' }}>Framed.</span>
+                                <span className="text-shimmer">Framed.</span>
                             </h1>
 
-                            <p className="rise rise-3 text-slate-500 text-lg md:text-xl max-w-lg mb-12 leading-relaxed font-medium mx-auto lg:mx-0">
+                            <p className="rise rise-3 text-luxury-purple/70 text-lg md:text-xl max-w-lg mb-12 leading-relaxed font-medium mx-auto lg:mx-0">
                                 Celebrate life's best moments with our premium collection of
                                 frames, keychains and personalized mugs. HD quality, made to last.
                             </p>
 
                             <div className="rise rise-4 flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                                <button className="bg-[#2D5A27] text-white px-10 py-5 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-[#23471e] transition-all hover:translate-y-[-4px] active:scale-95 shadow-xl shadow-luxury-green-dark/20">
+                                <button className="bg-luxury-purple text-white px-10 py-5 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-luxury-purple-dark transition-all hover:translate-y-[-4px] active:scale-95 shadow-xl shadow-luxury-purple-dark/20">
                                     Start Creating
                                 </button>
-                                <button className="bg-white text-luxury-charcoal border-2 border-luxury-cream px-10 py-5 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-luxury-cream transition-all hover:translate-y-[-4px] active:scale-95">
+                                <button className="bg-white text-luxury-purple-dark border-2 border-luxury-cream px-10 py-5 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-luxury-cream transition-all hover:translate-y-[-4px] active:scale-95">
                                     Browse Frames
                                 </button>
                             </div>
@@ -634,13 +636,13 @@ const Home = () => {
                                     </div>
 
                                     {/* Overlay Dynamic Elements - Moved inward and made MUCH more visible as requested */}
-                                    <div className="absolute -top-14 right-4 md:right-8 bg-white p-7 rounded-[32px] shadow-2xl shadow-luxury-gold/10 border border-slate-50 max-w-[170px] animate-bounce z-20" style={{ animationDuration: '4s' }}>
+                                    <div className="absolute -top-14 right-4 md:right-8 bg-white p-7 rounded-[32px] shadow-2xl shadow-luxury-purple/10 border border-slate-50 max-w-[170px] animate-bounce z-20" style={{ animationDuration: '4s' }}>
                                         <div className="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 mb-4 shadow-inner">
                                             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Top Trending</p>
-                                            <p className="text-[17px] font-black text-slate-900">Acrylic Frame</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-luxury-purple/60">Top Trending</p>
+                                            <p className="text-[17px] font-black text-luxury-purple-dark">Acrylic Frame</p>
                                             <div className="flex gap-1">
                                                 {[1, 2, 3, 4, 5].map(s => <div key={s} className="w-1 h-1 rounded-full bg-emerald-400"></div>)}
                                             </div>
@@ -650,10 +652,10 @@ const Home = () => {
                                     <div className="absolute -bottom-10 -left-6 md:-left-12 bg-slate-900 p-8 rounded-[32px] shadow-2xl shadow-slate-900/30 max-w-[210px] hidden md:block z-20">
                                         <p className="text-white text-sm font-semibold leading-relaxed opacity-95">"The acrylic finish on the frames and mug is stunning!"</p>
                                         <div className="mt-5 flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-luxury-gold to-luxury-blue-light overflow-hidden border-2 border-white/20"></div>
+                                            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-luxury-purple to-luxury-purple-light overflow-hidden border-2 border-white/20"></div>
                                             <div>
                                                 <p className="text-white text-[11px] font-bold">Raghav M.</p>
-                                                <span className="text-[9px] font-black text-luxury-gold uppercase tracking-widest">Verified Buyer</span>
+                                                <span className="text-[9px] font-black text-luxury-purple uppercase tracking-widest">Verified Buyer</span>
                                             </div>
                                         </div>
                                     </div>
@@ -661,7 +663,7 @@ const Home = () => {
                             </div>
 
                             {/* Decorative Glows */}
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[130%] h-[130%] bg-luxury-gold/10 rounded-full blur-[140px] -z-10 animate-pulse"></div>
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[130%] h-[130%] bg-luxury-purple/10 rounded-full blur-[140px] -z-10 animate-pulse"></div>
                             <div className="absolute top-0 right-0 w-32 h-32 bg-rose-400/10 rounded-full blur-[60px] -z-10"></div>
                         </div>
 
@@ -672,7 +674,7 @@ const Home = () => {
             {/* ══════════════════════════════════════════════════════
                 ANIMATED SEARCH SECTION — dark bg with floating product icons
             ══════════════════════════════════════════════════════ */}
-            <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg, #001F3F 0%, #0F172A 100%)', padding: '72px 0 80px' }}>
+            <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg, #30174D 0%, #170E2B 100%)', padding: '72px 0 80px' }}>
                 {/* Floating product emojis */}
                 {FLOAT_ITEMS.map((item, i) => (
                     <div key={i} className="fi" style={{ left: `${item.x}%`, top: `${item.y}%`, fontSize: item.size, '--dur': `${item.dur}s`, '--dly': `${item.delay}s` }}>
@@ -680,8 +682,8 @@ const Home = () => {
                     </div>
                 ))}
                 {/* Glow orbs */}
-                <div style={{ position: 'absolute', width: 300, height: 300, left: '8%', top: '-30%', borderRadius: '50%', background: 'rgba(191,167,93,.15)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-                <div style={{ position: 'absolute', width: 260, height: 260, right: '5%', bottom: '-20%', borderRadius: '50%', background: 'rgba(74,106,138,.1)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', width: 300, height: 300, left: '8%', top: '-30%', borderRadius: '50%', background: 'rgba(161,137,204,.15)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', width: 260, height: 260, right: '5%', bottom: '-20%', borderRadius: '50%', background: 'rgba(86,60,140,.1)', filter: 'blur(60px)', pointerEvents: 'none' }} />
                 {/* Dot grid */}
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle,rgba(255,255,255,.035) 1px,transparent 1px)', backgroundSize: '28px 28px', pointerEvents: 'none' }} />
 
@@ -691,31 +693,43 @@ const Home = () => {
                     <h2 className="fraunces" style={{ fontSize: 'clamp(28px,4vw,54px)', fontWeight: 900, fontStyle: 'italic', color: '#fff', marginBottom: 6, letterSpacing: '-1.5px', lineHeight: 1.1 }}>
                         We Turn Your Memories
                     </h2>
-                    <h2 className="fraunces" style={{ fontSize: 'clamp(28px,4vw,54px)', fontWeight: 900, fontStyle: 'italic', color: '#BFA75D', marginBottom: 40, letterSpacing: '-1.5px', lineHeight: 1.1 }}>
+                    <h2 className="fraunces" style={{ fontSize: 'clamp(28px,4vw,54px)', fontWeight: 900, fontStyle: 'italic', color: '#A189CC', marginBottom: 40, letterSpacing: '-1.5px', lineHeight: 1.1 }}>
                         Into Products
                     </h2>
 
                     {/* Search bar */}
-                    <div style={{ display: 'flex', alignItems: 'center', width: '100%', maxWidth: 640, background: 'rgba(255,255,255,.95)', backdropFilter: 'blur(20px)', borderRadius: 100, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,.35)', padding: '6px 6px 6px 24px' }}>
+                    <form 
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            if (searchQuery.trim()) {
+                                navigate(`/category/Search?q=${encodeURIComponent(searchQuery)}`);
+                            }
+                        }}
+                        style={{ display: 'flex', alignItems: 'center', width: '100%', maxWidth: 640, background: 'rgba(255,255,255,.95)', backdropFilter: 'blur(20px)', borderRadius: 100, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,.35)', padding: '6px 6px 6px 24px' }}
+                    >
                         <span style={{ color: '#94a3b8', flexShrink: 0 }}><FaSearch size={14} /></span>
                         <input
                             type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search for Love Story Frames, Wallet Cards etc."
                             style={{ flex: 1, border: 'none', outline: 'none', fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 14, fontWeight: 400, color: '#1e293b', background: 'transparent', padding: '12px 16px' }}
                         />
-                        <button style={{ background: '#BFA75D', color: '#fff', border: 'none', borderRadius: 100, padding: '12px 28px', fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0, fontFamily: "'Plus Jakarta Sans',sans-serif", transition: 'background .25s' }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#001F3F'}
-                            onMouseLeave={e => e.currentTarget.style.background = '#BFA75D'}>
+                        <button 
+                            type="submit"
+                            style={{ background: '#563C8C', color: '#fff', border: 'none', borderRadius: 100, padding: '12px 28px', fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0, fontFamily: "'Plus Jakarta Sans',sans-serif", transition: 'background .25s' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#30174D'}
+                            onMouseLeave={e => e.currentTarget.style.background = '#563C8C'}>
                             Search
                         </button>
-                    </div>
+                    </form>
 
                     {/* Quick search pills */}
                     <div style={{ display: 'flex', gap: 10, marginTop: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
                         {['📱 Phone Cases', '☕ Photo Mugs', '👕 T-Shirts', '🖼️ Wall Art', '🎁 Gift Sets'].map(tag => (
                             <button key={tag}
                                 style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.14)', color: 'rgba(255,255,255,.72)', fontSize: 12, fontWeight: 600, padding: '7px 16px', borderRadius: 100, cursor: 'pointer', backdropFilter: 'blur(8px)', transition: 'all .25s', fontFamily: "'Plus Jakarta Sans',sans-serif" }}
-                                onMouseEnter={e => { e.target.style.background = 'rgba(191,167,93,.35)'; e.target.style.borderColor = '#BFA75D'; e.target.style.color = '#fff'; }}
+                                onMouseEnter={e => { e.target.style.background = 'rgba(161,137,204,.35)'; e.target.style.borderColor = '#A189CC'; e.target.style.color = '#fff'; }}
                                 onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,.08)'; e.target.style.borderColor = 'rgba(255,255,255,.14)'; e.target.style.color = 'rgba(255,255,255,.72)'; }}>
                                 {tag}
                             </button>
@@ -726,13 +740,13 @@ const Home = () => {
             {/* ══════════════════════════════════════════════════════
                 MARQUEE STRIP
             ══════════════════════════════════════════════════════ */}
-            <div style={{ overflow: 'hidden', background: '#f8fafc', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', padding: '13px 0' }}>
+            <div style={{ overflow: 'hidden', background: '#FAF9F6', borderTop: '1px solid rgba(86,60,140,0.1)', borderBottom: '1px solid rgba(86,60,140,0.1)', padding: '13px 0' }}>
                 <div className="mq-track">
                     {[...Array(4)].flatMap((_, r) =>
                         ['Photo Albums', 'Phone Cases', 'Custom Mugs', 'Hoodies', 'Tote Bags', 'Wall Art', 'Notebooks', 'Fridge Magnets', 'Name Pens', 'Pillows'].map((item, i) => (
                             <span key={`${r}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '0 20px', flexShrink: 0 }}>
                                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.25em', textTransform: 'uppercase', color: '#94a3b8', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{item}</span>
-                                <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#BFA75D', flexShrink: 0, opacity: .5 }} />
+                                <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#563C8C', flexShrink: 0, opacity: .5 }} />
                             </span>
                         ))
                     )}
@@ -743,11 +757,11 @@ const Home = () => {
                 2. Popular Products Section — Instant Trust
             ══════════════════════════════════════════════════════ */}
             <div className="container mx-auto px-6 py-16 md:py-24 max-w-7xl">
-                <div data-sr className="flex flex-col md:flex-row items-baseline justify-between mb-14 pb-6 border-b border-slate-100">
+                <div data-sr className="flex flex-col md:flex-row items-baseline justify-between mb-14 pb-6 border-b border-luxury-purple/10">
                     <div>
-                        <span className="text-luxury-gold text-[10px] font-black uppercase tracking-[0.3em] mb-3 block" style={{ fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Trending Now</span>
-                        <h2 className="fraunces" style={{ fontSize: 'clamp(30px,4vw,54px)', fontWeight: 900, fontStyle: 'italic', color: '#0f172a', letterSpacing: '-1.5px', lineHeight: 1.05 }}>
-                            Our Most <span style={{ color: '#BFA75D' }}>Loved</span> Prints
+                        <span className="text-luxury-purple text-[10px] font-black uppercase tracking-[0.3em] mb-3 block" style={{ fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Trending Now</span>
+                        <h2 className="fraunces" style={{ fontSize: 'clamp(30px,4vw,54px)', fontWeight: 900, fontStyle: 'italic', color: '#422D6B', letterSpacing: '-1.5px', lineHeight: 1.05 }}>
+                            Our Most <span className="text-shimmer">Loved</span> Prints
                         </h2>
                     </div>
                     <a href="#" style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: '#0f172a', textDecoration: 'none', border: '1.5px solid #e2e8f0', borderRadius: 100, padding: '11px 26px', display: 'inline-flex', alignItems: 'center', gap: 8, transition: 'border-color .25s', fontFamily: "'Plus Jakarta Sans',sans-serif", marginTop: 16 }}
@@ -766,18 +780,18 @@ const Home = () => {
                                     className="w-full h-full object-cover"
                                     alt={product.name}
                                 />
-                                <div style={{ position: 'absolute', top: 0, left: 0, background: '#001F3F', color: '#fff', fontSize: 9, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', padding: '6px 13px', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+                                <div style={{ position: 'absolute', top: 0, left: 0, background: '#30174D', color: '#fff', fontSize: 9, fontWeight: 800, letterSpacing: '.2em', textTransform: 'uppercase', padding: '6px 13px', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                     Best Seller
                                 </div>
                                 <div className="pc-card-overlay">
-                                    <button style={{ background: '#2D5A27', color: '#fff', border: 'none', borderRadius: 100, padding: '11px 22px', fontSize: 11, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+                                    <button style={{ background: '#563C8C', color: '#fff', border: 'none', borderRadius: 100, padding: '11px 22px', fontSize: 11, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                         Customize Now
                                     </button>
                                 </div>
                             </div>
                             <div className="mt-5 text-center px-2">
                                 <h3 style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.05em', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{product.name}</h3>
-                                <div className="fraunces" style={{ fontSize: 26, fontWeight: 900, color: '#2D5A27', fontStyle: 'italic' }}>₹{product.basePrice}</div>
+                                <div className="fraunces" style={{ fontSize: 26, fontWeight: 900, color: '#563C8C', fontStyle: 'italic' }}>₹{Math.round(product.basePrice * (1 + (product.gst || 0) / 100))}</div>
                             </div>
                         </Link>
                     ))}
@@ -787,7 +801,7 @@ const Home = () => {
             {/* ══════════════════════════════════════════════════════
                 TRUST STRIP
             ══════════════════════════════════════════════════════ */}
-            <div style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', padding: '28px 48px' }}>
+            <div style={{ background: '#FAF9F6', borderTop: '1px solid rgba(86,60,140,0.1)', borderBottom: '1px solid rgba(86,60,140,0.1)', padding: '28px 48px' }}>
                 <div className="container mx-auto max-w-7xl" style={{ display: 'flex', justifyContent: 'center', gap: 14, flexWrap: 'wrap' }}>
                     {[
                         { icon: '🎨', text: 'Easy Design Tool' },
@@ -809,23 +823,23 @@ const Home = () => {
                 3. Popular Products Section — Screenshot Style
             ══════════════════════════════════════════════════════ */}
             <div className="container mx-auto px-4 py-8 max-w-7xl">
-                <div className={`relative overflow-hidden pt-10 pb-12 px-4 md:px-8 rounded-[3rem] bg-[#FDF6E9] border border-[#F5E6D3]/50 shadow-[0_15px_40px_-15px_rgba(126,107,78,0.1)]`}>
-                    <div className="flex flex-col items-center mb-6 relative z-10">qwa
-                        <h2 className="fraunces text-center" style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 900, color: '#7E6B4E', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+                <div className={`relative overflow-hidden pt-10 pb-12 px-4 md:px-8 rounded-[3rem] bg-luxury-cream border border-luxury-purple/10 shadow-[0_15px_40px_-15px_rgba(86,60,140,0.1)]`}>
+                    <div className="flex flex-col items-center mb-6 relative z-10">
+                        <h2 className="fraunces text-center" style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 900, color: '#30174D', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
                             Popular Products
                         </h2>
-                        <div className="w-16 h-[1.5px] bg-[#7E6B4E]/30 mt-4"></div>
+                        <div className="w-16 h-[1.5px] bg-luxury-purple/30 mt-4"></div>
                     </div>
 
                     <div className="relative group/scroll">
                         <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5 transition-all duration-700 ${showAllCategories ? 'max-h-[5000px] opacity-100' : 'max-h-[800px]'}`}>
-                            {(showAllCategories ? categories : categories.slice(0, 6)).map((cat, i) => (
+                            {categories.map((cat, i) => (
                                 <Link
                                     key={cat._id}
                                     to={`/category/${cat.name}`}
-                                    data-sr={!showAllCategories}
+                                    data-sr
                                     data-delay={i * 40}
-                                    className="group flex flex-col items-center transition-all duration-500 hover:-translate-y-2"
+                                    className={`group flex flex-col items-center transition-all duration-500 hover:-translate-y-2 ${(!showAllCategories && i >= 6) ? 'hidden' : 'flex'}`}
                                 >
                                     <div className="w-full aspect-square rounded-[2rem] overflow-hidden bg-white shadow-[0_10px_30px_-5px_rgba(0,0,0,0.05)] border border-[#F5E6D3] group-hover:shadow-[0_20px_50px_-10px_rgba(126,107,78,0.15)] group-hover:border-[#7E6B4E]/20 transition-all duration-500 p-0">
                                         <img
@@ -952,7 +966,7 @@ const Home = () => {
                                                         {template.name}
                                                     </h3>
                                                     <div className="flex items-center justify-between">
-                                                        <span className="fraunces text-2xl font-black text-luxury-green-dark">₹{template.basePrice + (template.packingCharges || 0)}</span>
+                                                        <span className="fraunces text-2xl font-black text-luxury-green-dark">₹{Math.round(template.basePrice * (1 + (template.gst || 0) / 100))}</span>
                                                         <div className="w-10 h-10 rounded-2xl border border-luxury-cream flex items-center justify-center text-slate-400 group-hover:bg-luxury-gold group-hover:border-luxury-gold group-hover:text-white transition-all duration-300">
                                                             <FaChevronRight size={12} />
                                                         </div>
@@ -1004,22 +1018,22 @@ const Home = () => {
                                 style={{ borderRadius: 24, padding: 40, background: 'rgba(255,255,255,.04)', border: '1.5px solid rgba(255,255,255,.08)' }}>
                                 <div style={{ display: 'flex', gap: 3, marginBottom: 20 }}>
                                     {[...Array(rev.rating)].map((_, j) => (
-                                        <svg key={j} width="14" height="14" viewBox="0 0 20 20" style={{ fill: '#fbbf24' }}>
+                                        <svg key={j} width="14" height="14" viewBox="0 0 20 20" style={{ fill: '#A189CC' }}>
                                             <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
                                         </svg>
                                     ))}
                                 </div>
-                                <div className="fraunces" style={{ fontSize: 52, color: '#BFA75D', lineHeight: .7, marginBottom: 10, fontStyle: 'italic', opacity: .4 }}>"</div>
+                                <div className="fraunces" style={{ fontSize: 52, color: '#563C8C', lineHeight: .7, marginBottom: 10, fontStyle: 'italic', opacity: .4 }}>"</div>
                                 <p className="fraunces" style={{ fontSize: 18, fontWeight: 300, fontStyle: 'italic', color: 'rgba(255,255,255,.65)', lineHeight: 1.8, marginBottom: 28 }}>
                                     {rev.text}
                                 </p>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, borderTop: '1px solid rgba(255,255,255,.07)', paddingTop: 22 }}>
-                                    <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(191,167,93,.15)', border: '1.5px solid rgba(191,167,93,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: '#BFA75D', flexShrink: 0, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+                                    <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(161,137,204,.15)', border: '1.5px solid rgba(161,137,204,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: '#A189CC', flexShrink: 0, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                         {rev.name.charAt(0)}
                                     </div>
                                     <div>
                                         <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', letterSpacing: '.04em', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{rev.name}</div>
-                                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.3em', textTransform: 'uppercase', color: '#fbbf24', marginTop: 3, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Verified Buyer</div>
+                                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.3em', textTransform: 'uppercase', color: '#A189CC', marginTop: 3, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Verified Buyer</div>
                                     </div>
                                 </div>
                             </div>
@@ -1037,10 +1051,10 @@ const Home = () => {
 
                         {/* Brand */}
                         <div>
-                            <h2 className="fraunces" style={{ fontSize: 32, fontWeight: 900, fontStyle: 'italic', color: '#0f172a', letterSpacing: '-1px', marginBottom: 6 }}>
+                            <h2 className="fraunces" style={{ fontSize: 32, fontWeight: 900, fontStyle: 'italic', color: '#30174D', letterSpacing: '-1px', marginBottom: 6 }}>
                                 Mimitiinaa
                             </h2>
-                            <div style={{ width: 28, height: 3, background: '#BFA75D', borderRadius: 100, marginBottom: 18 }} />
+                            <div style={{ width: 28, height: 3, background: '#563C8C', borderRadius: 100, marginBottom: 18 }} />
                             <p style={{ fontSize: 13, fontWeight: 400, color: '#64748b', lineHeight: 1.9, maxWidth: 280, marginBottom: 26, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                                 Quality custom products made for your special moments.
                                 Expertly printed and delivered with care.
@@ -1048,7 +1062,7 @@ const Home = () => {
                             <div className="flex gap-3">
                                 {[<FaTwitter size={13} />, <FaInstagram size={13} />, <FaWhatsapp size={13} />].map((icon, i) => (
                                     <a key={i} href="#" style={{ width: 38, height: 38, border: '1.5px solid #e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', textDecoration: 'none', transition: 'all .25s' }}
-                                        onMouseEnter={e => { e.currentTarget.style.background = '#BFA75D'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#BFA75D'; }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = '#563C8C'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#563C8C'; }}
                                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.borderColor = '#e2e8f0'; }}>
                                         {icon}
                                     </a>
@@ -1058,7 +1072,7 @@ const Home = () => {
 
                         {/* Navigation */}
                         <div>
-                            <h3 style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.3em', textTransform: 'uppercase', color: '#BFA75D', marginBottom: 22, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Navigation</h3>
+                            <h3 style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.3em', textTransform: 'uppercase', color: '#A189CC', marginBottom: 22, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Navigation</h3>
                             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 14 }}>
                                 {[{ label: 'Home Page', to: '/' }, { label: 'Our Story', to: '/about' }, { label: 'Contact Support', to: '/contact' }, { label: 'My Account', to: '/profile' }].map((link, i) => (
                                     <li key={i}>
@@ -1070,11 +1084,11 @@ const Home = () => {
 
                         {/* Connect */}
                         <div>
-                            <h3 style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.3em', textTransform: 'uppercase', color: '#BFA75D', marginBottom: 22, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Connect</h3>
+                            <h3 style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.3em', textTransform: 'uppercase', color: '#A189CC', marginBottom: 22, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Connect</h3>
                             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 16 }}>
                                 {[{ icon: <FaMapMarkerAlt size={11} />, text: 'New Design HUB, India' }, { icon: <FaPhoneAlt size={11} />, text: '+91 98765 43210' }, { icon: <FaEnvelope size={11} />, text: 'hello@mimitiinaa.com' }].map((item, i) => (
                                     <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                                        <span style={{ color: '#BFA75D', marginTop: 2, flexShrink: 0 }}>{item.icon}</span>
+                                        <span style={{ color: '#A189CC', marginTop: 2, flexShrink: 0 }}>{item.icon}</span>
                                         <span style={{ fontSize: 13, fontWeight: 500, color: '#64748b', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{item.text}</span>
                                     </li>
                                 ))}
@@ -1085,14 +1099,14 @@ const Home = () => {
                         <div>
                             <div style={{ background: '#0f172a', padding: 32, borderRadius: 24, color: '#fff' }}>
                                 <h3 className="fraunces" style={{ fontSize: 22, fontWeight: 700, fontStyle: 'italic', marginBottom: 6 }}>Subscribe</h3>
-                                <div style={{ width: 24, height: 2, background: '#BFA75D', borderRadius: 100, marginBottom: 16 }} />
+                                <div style={{ width: 24, height: 2, background: '#563C8C', borderRadius: 100, marginBottom: 16 }} />
                                 <p style={{ fontSize: 10, color: '#475569', letterSpacing: '.2em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 18, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Get special offers</p>
                                 <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #1e293b', borderRadius: 100, overflow: 'hidden', padding: '4px 4px 4px 18px' }}>
                                     <input type="email" placeholder="Email address"
                                         style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 13, color: '#fff' }} />
-                                    <button style={{ background: '#BFA75D', color: '#fff', border: 'none', borderRadius: 100, padding: '10px 20px', fontSize: 14, cursor: 'pointer', transition: 'background .25s' }}
-                                        onMouseEnter={e => e.currentTarget.style.background = '#001F3F'}
-                                        onMouseLeave={e => e.currentTarget.style.background = '#BFA75D'}>→</button>
+                                    <button style={{ background: '#563C8C', color: '#fff', border: 'none', borderRadius: 100, padding: '10px 20px', fontSize: 14, cursor: 'pointer', transition: 'background .25s' }}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#30174D'}
+                                        onMouseLeave={e => e.currentTarget.style.background = '#563C8C'}>→</button>
                                 </div>
                             </div>
                         </div>

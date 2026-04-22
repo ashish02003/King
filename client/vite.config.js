@@ -6,6 +6,7 @@ export default defineConfig({
     plugins: [react()],
     build: {
         outDir: '../server/public',
-        emptyOutDir: true,
+        // Preserve `server/public/admin` so the standalone admin build remains available.
+        emptyOutDir: false,
     }
 })

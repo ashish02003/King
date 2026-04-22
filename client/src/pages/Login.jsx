@@ -109,24 +109,24 @@ const Login = () => {
 
                     <div className="mt-2 pt-2 border-t border-slate-100">
                         <p className="text-center text-sm font-medium text-slate-500">
-                            Don't have an account? <Link to="/register" className="text-luxury-gold font-black hover:underline ml-1">Create Account</Link>
+                            Don't have an account? <Link to="/register" className="text-luxury-purple font-black hover:underline ml-1">Create Account</Link>
                         </p>
                     </div>
                 </div>
 
                 {/* Right Side: Visual */}
-                <div className="hidden lg:flex w-1/2 bg-luxury-blue-dark relative p-16 items-center flex-col justify-center overflow-hidden">
+                <div className="hidden lg:flex w-1/2 bg-luxury-purple-dark relative p-16 items-center flex-col justify-center overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-full">
-                        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-luxury-gold rounded-full blur-[120px] opacity-10"></div>
-                        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-luxury-blue-light rounded-full blur-[120px] opacity-10"></div>
+                        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-luxury-purple rounded-full blur-[120px] opacity-10"></div>
+                        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-luxury-purple-light rounded-full blur-[120px] opacity-10"></div>
                     </div>
 
                     <div className="relative z-10 text-center">
                         <div className="w-[16rem] h-20 bg-white/10 backdrop-blur-3xl rounded-3xl flex items-center justify-center mx-auto mb-10 border border-white/20 shadow-2xl">
                             <Logo className="scale-150" />
                         </div>
-                        <h2 className="text-4xl font-[900] text-white tracking-tight mb-6 leading-tight">Craft Your <br /><span className="text-luxury-gold-light">Perfect Story</span></h2>
-                        <p className="text-luxury-gold-light/60 font-medium text-lg max-w-sm mx-auto">Join thousands of creators who turn imagination into reality every single day.</p>
+                        <h2 className="text-4xl font-[900] text-white tracking-tight mb-6 leading-tight">Craft Your <br /><span className="text-luxury-purple-light">Perfect Story</span></h2>
+                        <p className="text-luxury-purple-light/60 font-medium text-lg max-w-sm mx-auto">Join thousands of creators who turn imagination into reality every single day.</p>
 
 
                         <div className="mt-12 flex items-center justify-center gap-6">

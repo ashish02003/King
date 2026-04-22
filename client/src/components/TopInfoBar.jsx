@@ -17,30 +17,30 @@ const TopInfoBar = () => {
             </div>
 
             {/* Dark Trust Badge Bar */}
-            <div className="bg-[#0b1e3b] text-white py-2.5 overflow-hidden whitespace-nowrap">
+            <div className="bg-luxury-purple-dark text-white py-2.5 overflow-hidden whitespace-nowrap">
                 <div className="container mx-auto px-4 flex justify-between items-center text-[11px] md:text-[13px] font-bold uppercase tracking-tight">
-                    <div className="flex items-center space-x-1.5 text-yellow-500">
+                    <div className="flex items-center space-x-1.5 text-luxury-purple-light">
                         <FaAward className="text-sm" />
                         <span className="text-white">EST. 2015</span>
                     </div>
 
                     <div className="flex items-center space-x-1.5">
-                        <FaUsers className="text-yellow-500 text-sm" />
+                        <FaUsers className="text-luxury-purple-light text-sm" />
                         <span>Trusted By Millions</span>
                     </div>
 
                     <div className="flex items-center space-x-1.5 hidden sm:flex">
-                        <span className="text-blue-400">🔥 1 Crore+</span>
+                        <span className="text-luxury-purple-light">🔥 1 Crore+</span>
                         <span>Photos Printed</span>
                     </div>
 
                     <div className="flex items-center space-x-1.5 hidden lg:flex">
-                        <FaGem className="text-blue-400 text-sm" />
+                        <FaGem className="text-luxury-purple-light text-sm" />
                         <span>Crafted With Premium Materials</span>
                     </div>
 
                     <div className="flex items-center space-x-1.5 hidden xl:flex">
-                        <FaUserTie className="text-yellow-500 text-sm" />
+                        <FaUserTie className="text-luxury-purple-light text-sm" />
                         <span>Professional Editing</span>
                     </div>
                 </div>

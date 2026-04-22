@@ -16,7 +16,7 @@ const domain = 'https://ashishproject.vercel.app';
 
 // Middleware
 app.use(cors({
-    origin: [domain, 'http://localhost:5173', 'http://localhost:3000'],
+    origin: [domain, 'http://localhost:5173', 'http://localhost:3000','http://localhost:5174'],
     credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
@@ -58,16 +58,30 @@ app.use('/api/categories', require('./routes/categoryRoutes'));
 app.use('/api/customization', require('./routes/customizationRoutes'));
 app.use('/api/payment', require('./routes/paymentRoutes'));    // ✅ Razorpay
 app.use('/api/shipping', require('./routes/shippingRoutes'));   // ✅ NimbusPost webhook + tracking
+app.use('/api/settings', require('./routes/settingsRoutes'));
 
 
 // Serve frontend static files if present
 const publicPath = path.resolve(__dirname, 'public');
 app.use(express.static(publicPath));
 
-// SPA fallback - serve index.html for any non-API route (client-side routing)
+// SPA fallback:
+// - `/admin/*` should load the standalone admin React app.
+// - everything else should load the main client React app.
+// This ensures deep links like `/admin/login` don't return the client `index.html`.
+const clientIndexPath = path.join(publicPath, 'index.html');
+const adminIndexPath = path.join(publicPath, 'admin', 'index.html');
 app.use((req, res, next) => {
     if (req.path.startsWith('/api')) return next();
-    res.sendFile(path.join(publicPath, 'index.html'));
+
+    if (req.path === '/admin' || req.path.startsWith('/admin/')) {
+        return res.sendFile(adminIndexPath, (err) => {
+            // If admin build isn't present yet, gracefully fall back to client.
+            if (err) return res.sendFile(clientIndexPath);
+        });
+    }
+
+    return res.sendFile(clientIndexPath);
 });
 
 // For local development

@@ -6,19 +6,19 @@
 
 @layer base {
     :root {
-        --lux-bg: #FFFFFF;
-        --lux-fg: #0F172A;
-        --lux-primary: #001F3F;
-        --lux-accent: #BFA75D;
+        --lux-bg: #FAF9F6;
+        --lux-fg: #30174D;
+        --lux-primary: #563C8C;
+        --lux-accent: #A68A56;
         --lux-border: #E2E8F0;
-        --lux-surface: #F8F5F0;
+        --lux-surface: #FAF9F6;
 
         /* Screenshot Colors */
-        --lux-green: #2D5A27;
-        --lux-blue: #001F3F;
-        --lux-red: #700000;
-        --lux-gold: #7E6B4E;
-        --lux-purple: #3A1F40;
+        --lux-green: #4A5D48;
+        --lux-blue: #1B2B52;
+        --lux-red: #720E17;
+        --lux-gold: #A68A56;
+        --lux-purple: #563C8C;
     }
 
     body {
@@ -125,5 +125,14 @@
 
     .luxury-blob {
         @apply absolute w-[500px] h-[500px] rounded-full mix-blend-multiply filter blur-[100px] opacity-[0.08] transition-all duration-1000;
+    }
+
+    /* Hide scrollbar but keep scroll functionality */
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
     }
 }

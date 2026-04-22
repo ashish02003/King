@@ -19,6 +19,7 @@ const CustomizeProduct = () => {
     const { id } = useParams();
     const canvasRef = useRef(null);
     const fileInputRef = useRef(null);
+    const initialPlaceholdersRef = useRef({});
     const [canvas, setCanvas] = useState(null);
     const [template, setTemplate] = useState(null);
     const [activeTab, setActiveTab] = useState('image');
@@ -30,11 +31,77 @@ const CustomizeProduct = () => {
     // Mug/cylindrical wrap preview
     const [mugPreviewUrl, setMugPreviewUrl] = useState(null);   // flat design URL for mug warp render
     const [showMugPreview, setShowMugPreview] = useState(false); // toggle the 3D preview panel
+    const [activeUploadSlot, setActiveUploadSlot] = useState(null); // Tracks center/left/right for explicit uploads
+    const [customizationMode, setCustomizationMode] = useState('singlePhotoBothSides');
+    const [photoTextValue, setPhotoTextValue] = useState('');
+    const [photoSide, setPhotoSide] = useState('left');
+    const [textSide, setTextSide] = useState('right');
+    const [selectedUploadShape, setSelectedUploadShape] = useState('auto');
+    const [uploadShapeBySlot, setUploadShapeBySlot] = useState({ left: 'auto', center: 'auto', right: 'auto' });
+    const [shapeTargetSlot, setShapeTargetSlot] = useState('center');
+    const [slotShapeOverrides, setSlotShapeOverrides] = useState({});
+    const [slotAssets, setSlotAssets] = useState({
+        left: { imageUrl: null, text: '', shapeType: null, transform: null },
+        center: { imageUrl: null, text: '', shapeType: null, transform: null },
+        right: { imageUrl: null, text: '', shapeType: null, transform: null }
+    });
 
     const { user } = useAuth();
     const { addToCart, setSelectedItemIds, buyNowItem, setBuyNowItem } = useCart();
     const navigate = useNavigate();
     const [quantity, setQuantity] = useState(buyNowItem?.template?._id === id ? buyNowItem.quantity : 1);
+    const isWrapProduct = (() => {
+        const catLower = (template?.category || '').toLowerCase();
+        return catLower.includes('mug') || catLower.includes('bottle') || catLower.includes('case') ||
+            template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'phone';
+    })();
+    // Match admin CreateTemplate.getSideShapeMapFromCanvas (rect → rectangle, mug-wrap primary)
+    const placeholderShapeBySide = (() => {
+        const objects = template?.canvasSettings?.objects || [];
+        const placeholders = objects
+            .filter((o) => o?.role === 'placeholder')
+            .sort((a, b) => (a?.left || 0) - (b?.left || 0));
+        if (!placeholders.length) return {};
+        const norm = (shape) => (shape === 'rect' ? 'rectangle' : (shape || 'rectangle'));
+        const cat = (template?.category || '').toLowerCase();
+        const isWrapTpl = template?.wrapType === 'mug' || template?.wrapType === 'bottle'
+            || cat.includes('mug') || cat.includes('bottle');
+        const primaryWrap = placeholders.find((p) => norm(p.shapeType) === 'mug-wrap');
+        if (primaryWrap && isWrapTpl) {
+            const wrapShape = norm(primaryWrap.shapeType);
+            return { left: wrapShape, center: wrapShape, right: wrapShape };
+        }
+        if (placeholders.length === 1) {
+            const shape = norm(placeholders[0]?.shapeType);
+            return { left: shape, center: shape, right: shape };
+        }
+        if (placeholders.length === 2) {
+            return {
+                left: norm(placeholders[0]?.shapeType),
+                center: norm(placeholders[0]?.shapeType),
+                right: norm(placeholders[1]?.shapeType)
+            };
+        }
+        return {
+            left: norm(placeholders[0]?.shapeType),
+            center: norm(placeholders[Math.floor(placeholders.length / 2)]?.shapeType),
+            right: norm(placeholders[placeholders.length - 1]?.shapeType)
+        };
+    })();
+    const adminMockupShapeBySide = (() => {
+        const out = {};
+        (template?.mockupViews || []).forEach((mv) => {
+            const side = mv?.side || mv?.angleFocus || 'center';
+            if (mv?.shapeType) out[side] = mv.shapeType;
+        });
+        return out;
+    })();
+    const hasAdminLockedShapes = Object.keys(adminMockupShapeBySide).length > 0;
+    const previewShapeBySide = {
+        left: adminMockupShapeBySide.left || slotAssets.left?.shapeType || slotShapeOverrides.left || (uploadShapeBySlot.left !== 'auto' ? uploadShapeBySlot.left : placeholderShapeBySide.left),
+        center: adminMockupShapeBySide.center || slotAssets.center?.shapeType || slotShapeOverrides.center || (uploadShapeBySlot.center !== 'auto' ? uploadShapeBySlot.center : placeholderShapeBySide.center),
+        right: adminMockupShapeBySide.right || slotAssets.right?.shapeType || slotShapeOverrides.right || (uploadShapeBySlot.right !== 'auto' ? uploadShapeBySlot.right : placeholderShapeBySide.right)
+    };
 
     // Sync quantity changes back to buyNowItem state
     useEffect(() => {
@@ -91,9 +158,16 @@ const CustomizeProduct = () => {
     useEffect(() => {
         if (!template || !canvasRef.current) return;
 
+        const catL = (template.category || '').toLowerCase();
+        const isWrap = catL.includes('mug') || catL.includes('bottle') || template.wrapType === 'mug' || template.wrapType === 'bottle';
+
+        // Set dimensions: Wide for wraps, Portrait for cases
+        const canvasWidth = isWrap ? 800 : 400;
+        const canvasHeight = isWrap ? 400 : 600;
+
         const initCanvas = new fabric.Canvas(canvasRef.current, {
-            height: 600,
-            width: 400,
+            height: canvasHeight,
+            width: canvasWidth,
             backgroundColor: '#ffffff',
             preserveObjectStacking: true
         });
@@ -117,24 +191,26 @@ const CustomizeProduct = () => {
             setIsPanning(false);
         };
 
-        // Keep clipPath (shape) fixed at placeholder position so only image moves, not the shape
+        // Robust way to keep the clipPath perfectly aligned with the placeholder
         const syncClipPathToPlaceholder = (obj) => {
             if (!obj.clipPath || !obj.maskRef) return;
             const mask = obj.maskRef;
+            const center = mask.getCenterPoint();
             obj.clipPath.set({
-                left: mask.left,
-                top: mask.top,
-                scaleX: mask.scaleX ?? 1,
-                scaleY: mask.scaleY ?? 1,
-                angle: mask.angle ?? 0,
-                originX: mask.originX || 'center',
-                originY: mask.originY || 'center'
+                left: center.x,
+                top: center.y,
+                scaleX: mask.scaleX || 1,
+                scaleY: mask.scaleY || 1,
+                angle: mask.angle || 0,
+                originX: 'center',
+                originY: 'center',
+                absolutePositioned: true
             });
             obj.clipPath.setCoords();
         };
 
-        // Constrain dragged images to stay inside their placeholder area
-        const handleObjectMoving = (e) => {
+        // Constrain dragged images to stay inside their placeholder area and always COVER it
+        const handleImageTransformation = (e) => {
             const obj = e.target;
             if (!obj) return;
 
@@ -144,13 +220,24 @@ const CustomizeProduct = () => {
                 const mCenter = mask.getCenterPoint();
                 const mW = mask.getScaledWidth();
                 const mH = mask.getScaledHeight();
+
+                // 1. Minimum Scale Constraint: Image must always be large enough to cover the mask
+                // We use base object width and compare against scaled mask dimensions
+                const minScaleX = mW / (obj.width || 1);
+                const minScaleY = mH / (obj.height || 1);
+                const minScale = Math.max(minScaleX, minScaleY);
+
+                if (obj.scaleX < minScale) {
+                    obj.set({ scaleX: minScale, scaleY: minScale });
+                }
+
                 const iW = obj.getScaledWidth();
                 const iH = obj.getScaledHeight();
 
                 let newX = obj.left;
                 let newY = obj.top;
 
-                // 1. Constrain Panning: The image must always COVER the shape area.
+                // 2. Position Constraint: Ensure the image always covers the entire mask area
                 if (iW >= mW) {
                     const limitX = (iW - mW) / 2;
                     newX = Math.max(mCenter.x - limitX, Math.min(mCenter.x + limitX, newX));
@@ -169,7 +256,6 @@ const CustomizeProduct = () => {
 
                 // Force clipPath (shape) to stay at placeholder position – only image moves, shape stays fixed
                 syncClipPathToPlaceholder(obj);
-
                 obj.setCoords();
             }
         };
@@ -178,13 +264,77 @@ const CustomizeProduct = () => {
             const obj = e.target;
             if (obj && obj.role === 'clipped-image' && obj.maskRef) {
                 syncClipPathToPlaceholder(obj);
+                const mask = obj.maskRef;
+                const slot = obj.sideSlot || 'center';
+                const mW = mask.getScaledWidth?.() ?? (mask.width * (mask.scaleX || 1)) ?? 1;
+                const mH = mask.getScaledHeight?.() ?? (mask.height * (mask.scaleY || 1)) ?? 1;
+                const baseScale = Math.max(mW / (obj.width || 1), mH / (obj.height || 1)) || 1;
+                const zoom = (obj.scaleX || baseScale) / baseScale;
+                const maskCenter = mask.getCenterPoint ? mask.getCenterPoint() : { x: mask.left, y: mask.top };
+                const offsetX = ((obj.left || maskCenter.x) - maskCenter.x) / mW;
+                const offsetY = ((obj.top || maskCenter.y) - maskCenter.y) / mH;
+                setSlotAssets((prev) => ({
+                    ...prev,
+                    [slot]: {
+                        ...prev[slot],
+                        transform: {
+                            zoom: Number.isFinite(zoom) ? zoom : 1,
+                            offsetX: Number.isFinite(offsetX) ? offsetX : 0,
+                            offsetY: Number.isFinite(offsetY) ? offsetY : 0
+                        }
+                    }
+                }));
+                // Single-placeholder wrap templates mirror one edited position on all sides.
+                const placeholderCount = getSortedPlaceholders(initCanvas).length;
+                if (isWrap && placeholderCount <= 1 && slot === 'center') {
+                    const mirrored = {
+                        zoom: Number.isFinite(zoom) ? zoom : 1,
+                        offsetX: Number.isFinite(offsetX) ? offsetX : 0,
+                        offsetY: Number.isFinite(offsetY) ? offsetY : 0
+                    };
+                    setSlotAssets((prev) => ({
+                        ...prev,
+                        left: { ...prev.left, transform: mirrored },
+                        center: { ...prev.center, transform: mirrored },
+                        right: { ...prev.right, transform: mirrored }
+                    }));
+                }
+            }
+        };
+
+        const syncLabelToPlaceholder = (placeholder) => {
+            const label = initCanvas.getObjects().find(o =>
+                o.role === 'placeholder-label' && (o.placeholderRef === placeholder || o.id === `label_${placeholder.id}`)
+            );
+            if (label) {
+                const center = placeholder.getCenterPoint();
+                label.set({
+                    left: center.x,
+                    top: center.y,
+                    angle: placeholder.angle || 0
+                });
+                // Dynamically adjust font size if shape becomes too small/large
+                const w = placeholder.getScaledWidth();
+                const h = placeholder.getScaledHeight();
+                label.set({ fontSize: Math.max(8, Math.min(w, h) / 6) });
+                label.setCoords();
             }
         };
 
         initCanvas.on('selection:created', handleSelection);
         initCanvas.on('selection:updated', handleSelection);
         initCanvas.on('selection:cleared', handleCleared);
-        initCanvas.on('object:moving', handleObjectMoving);
+        initCanvas.on('object:moving', (e) => {
+            handleImageTransformation(e);
+            if (e.target && e.target.role === 'placeholder') syncLabelToPlaceholder(e.target);
+        });
+        initCanvas.on('object:scaling', (e) => {
+            handleImageTransformation(e);
+            if (e.target && e.target.role === 'placeholder') syncLabelToPlaceholder(e.target);
+        });
+        initCanvas.on('object:rotating', (e) => {
+            if (e.target && e.target.role === 'placeholder') syncLabelToPlaceholder(e.target);
+        });
         initCanvas.on('object:modified', handleObjectModified);
 
         // Keyboard Delete Logic
@@ -226,16 +376,24 @@ const CustomizeProduct = () => {
 
         initCanvas.on('mouse:down', (opt) => {
             if (opt.target) {
-                if (opt.target.role === 'placeholder') {
-                    // Prevent selection/movement when clicking to upload
-                    initCanvas.discardActiveObject();
-                    // Don't hide placeholder here - only hide after successful upload
-                    fileInputRef.current.click();
-                    initCanvas.activePlaceholder = opt.target;
-                } else if (opt.target.role === 'placeholder-label') {
-                    initCanvas.discardActiveObject();
+                // If specifically clicking the "Select Photo" label text, trigger upload immediately
+                if (opt.target.role === 'placeholder-label') {
                     fileInputRef.current.click();
                     initCanvas.activePlaceholder = opt.target.placeholderRef;
+                    // Discard selection so the label doesn't look like it's being edited
+                    initCanvas.discardActiveObject();
+                }
+                // If it's the placeholder (shape background), we DO NOT trigger upload here.
+                // This allows the user to drag and resize smoothly on the first click.
+            }
+        });
+
+        initCanvas.on('mouse:dblclick', (opt) => {
+            if (opt.target) {
+                const target = opt.target.role === 'placeholder-label' ? opt.target.placeholderRef : opt.target;
+                if (target && target.role === 'placeholder') {
+                    fileInputRef.current.click();
+                    initCanvas.activePlaceholder = target;
                 }
             }
         });
@@ -299,10 +457,22 @@ const CustomizeProduct = () => {
                         return obj;
                     });
 
+                    const ORIGINAL_WIDTH = 400;
+                    const ORIGINAL_HEIGHT = 600;
+                    const offsetX = (initCanvas.width - ORIGINAL_WIDTH) / 2;
+                    const offsetY = (initCanvas.height - ORIGINAL_HEIGHT) / 2;
+
                     const objs = await fabric.util.enlivenObjects(objectsToLoad);
                     objs.forEach((item, index) => {
                         const originalObj = objectsToLoad[index];
                         if (originalObj.id === 'background_image') return;
+
+                        if (item.left !== undefined) {
+                            item.set('left', item.left + offsetX);
+                        }
+                        if (item.top !== undefined) {
+                            item.set('top', item.top + offsetY);
+                        }
 
                         // Restoration logic: Verify role/id from original JSON if missing on instance
                         let role = item.role || originalObj.role;
@@ -340,27 +510,51 @@ const CustomizeProduct = () => {
                                 shapeType: preservedShapeType, // CRITICAL: Preserve shapeType for clipping
                                 selectable: true,
                                 evented: true,
-                                // Lock movement initially - unlock only after image is uploaded
-                                lockMovementX: true,
-                                lockMovementY: true,
-                                lockScalingX: true,
-                                lockScalingY: true,
-                                lockRotation: true,
-                                // Gray background for the shape area
-                                strokeWidth: 1,
-                                stroke: '#94a3b8', // Slate-400 border
-                                strokeDashArray: null,
-                                fill: 'rgba(226, 232, 240, 0.7)', // Slate-200 gray background
-                                // Vincent: Corrected field names
+                                // Unlock movement! User requested to move the shape
+                                lockMovementX: false,
+                                lockMovementY: false,
+                                lockScalingX: false,
+                                lockScalingY: false,
+                                lockRotation: false,
+
+                                strokeWidth: 2,
+                                stroke: '#6366f1', // Indigo-500
+                                strokeDashArray: [5, 5],
+                                fill: 'rgba(99, 102, 241, 0.05)',
+
+                                cornerStyle: 'circle',
+                                cornerColor: '#6366f1',
+                                borderColor: '#6366f1',
+                                transparentCorners: false,
+                                cornerSize: 10,
+                                hasRotatingPoint: true,
+
                                 originX: 'center',
                                 originY: 'center',
                                 hoverCursor: 'pointer'
                             });
 
-                            // Also set on instance for serialization
-                            item.shapeType = preservedShapeType;
+                            // Capture initial admin design for "Auto" restoration later
+                            const slots = ['left', 'center', 'right'];
+                            const placeholderSlot = item.slot || slots[index] || 'center';
+                            initialPlaceholdersRef.current[placeholderSlot] = {
+                                left: item.left,
+                                top: item.top,
+                                width: item.width,
+                                height: item.height,
+                                scaleX: item.scaleX,
+                                scaleY: item.scaleY,
+                                angle: item.angle || 0,
+                                shapeType: item.shapeType || (item.type === 'circle' ? 'circle' : 'rectangle'),
+                                path: item.path ? item.path : null, // Store path if it's a Path object
+                                radius: item.radius || null
+                            };
 
-                            const center = (typeof item.getCenterPoint === 'function' ? item.getCenterPoint() : null) || { x: 200, y: 300 };
+                            // Also set on instance for serialization
+                            item.shapeType = item.shapeType || (item.type === 'circle' ? 'circle' : 'rectangle');
+                            item.slot = placeholderSlot;
+
+                            const center = (typeof item.getCenterPoint === 'function' ? item.getCenterPoint() : null) || { x: item.left, y: item.top };
                             const labelId = `label_${item.id}`;
                             const w = item.type === 'path' && item.getBoundingRect ? item.getBoundingRect().width : (item.width * (item.scaleX || 1));
                             const h = item.type === 'path' && item.getBoundingRect ? item.getBoundingRect().height : (item.height * (item.scaleY || 1));
@@ -375,7 +569,8 @@ const CustomizeProduct = () => {
                                 left: center.x,
                                 top: center.y,
                                 selectable: false,
-                                evented: false,
+                                evented: true,
+                                hoverCursor: 'pointer',
                                 role: 'placeholder-label',
                                 id: labelId,
                                 placeholderRef: item,
@@ -383,7 +578,12 @@ const CustomizeProduct = () => {
                             });
                             initCanvas.add(item, label);
                         } else {
-                            item.set({ selectable: false, evented: false });
+                            // Let the user edit text objects (like 'Write Your Text') provided by the admin
+                            if (item.type === 'i-text' || item.type === 'text' || item.type === 'textbox') {
+                                item.set({ selectable: true, evented: true, editable: true, hoverCursor: 'text' });
+                            } else {
+                                item.set({ selectable: false, evented: false });
+                            }
                             initCanvas.add(item);
                         }
                     });
@@ -400,7 +600,9 @@ const CustomizeProduct = () => {
             initCanvas.off('selection:created', handleSelection);
             initCanvas.off('selection:updated', handleSelection);
             initCanvas.off('selection:cleared', handleCleared);
-            initCanvas.off('object:moving', handleObjectMoving);
+            initCanvas.off('object:moving', handleImageTransformation);
+            initCanvas.off('object:scaling', handleImageTransformation);
+            initCanvas.off('object:modified', handleObjectModified);
             initCanvas.dispose();
         };
     }, [template?._id]);
@@ -418,6 +620,347 @@ const CustomizeProduct = () => {
         canvas.renderAll();
     };
 
+    const addPhotoFrame = async (shapeType, pathData = null, overrides = {}) => {
+        if (!canvas) return;
+
+        let shape;
+        const commonProps = {
+            role: 'placeholder',
+            shapeType: shapeType,
+            fill: 'rgba(99, 102, 241, 0.05)', // Very light indigo fill
+            stroke: '#6366f1', // Indigo-500 border
+            strokeWidth: 2,
+            strokeDashArray: [5, 5],
+            originX: 'center',
+            originY: 'center',
+            selectable: true,
+            hoverCursor: 'pointer',
+            id: `user_frame_${Date.now()}`,
+            cornerStyle: 'circle',
+            cornerColor: '#6366f1',
+            borderColor: '#6366f1',
+            transparentCorners: false,
+            cornerSize: 10,
+            hasRotatingPoint: true,
+            // CRITICAL: Ensure we don't carry over old scales that cause shrinking/growing
+            scaleX: 1,
+            scaleY: 1,
+            ...overrides
+        };
+
+        // Use visible dimensions from overrides or defaults
+        const targetWidth = overrides.width || 150;
+        const targetHeight = overrides.height || 150;
+
+        if (pathData) {
+            shape = new fabric.Path(pathData, { ...commonProps });
+        } else if (shapeType === 'circle') {
+            const r = Math.min(targetWidth, targetHeight) / 2;
+            shape = new fabric.Circle({ ...commonProps, radius: r, width: r * 2, height: r * 2 });
+        } else if (shapeType === 'heart') {
+            const d = "M 50 90 C 100 50 100 0 50 30 C 0 0 0 50 50 90 Z";
+            shape = new fabric.Path(d, { ...commonProps, width: 100, height: 100, scaleX: targetWidth / 100, scaleY: targetHeight / 100 });
+        } else if (shapeType === 'star') {
+            const d = "M 50 0 L 61 35 L 98 35 L 68 57 L 79 91 L 50 70 L 21 91 L 32 57 L 2 35 L 39 35 Z";
+            shape = new fabric.Path(d, { ...commonProps, width: 100, height: 100, scaleX: targetWidth / 100, scaleY: targetHeight / 100 });
+        } else if (shapeType === 'mug-wrap') {
+            const d = "M 0 10 Q 50 30 100 10 L 100 90 Q 50 110 0 90 Z";
+            shape = new fabric.Path(d, { ...commonProps, width: 100, height: 100, scaleX: targetWidth / 100, scaleY: targetHeight / 100 });
+        } else {
+            shape = new fabric.Rect({ ...commonProps, width: targetWidth, height: targetHeight });
+        }
+
+        const center = {
+            x: overrides.left !== undefined ? overrides.left : canvas.width / 2,
+            y: overrides.top !== undefined ? overrides.top : canvas.height / 2
+        };
+        shape.set({ left: center.x, top: center.y });
+
+        // Add "Select Photo" Label
+        const labelText = new fabric.IText('Select\nPhoto', {
+            fontSize: Math.max(10, Math.min(18, targetWidth / 6)),
+            fontFamily: 'Arial',
+            fill: '#2563eb',
+            fontWeight: 'bold',
+            textAlign: 'center',
+            originX: 'center',
+            originY: 'center',
+            left: center.x,
+            top: center.y,
+            role: 'placeholder-label',
+            placeholderRef: shape,
+            selectable: false,
+            evented: true,
+            hoverCursor: 'pointer',
+            id: `label_${shape.id}`
+        });
+
+        // Linked movement logic
+        shape.on('moving', () => {
+            const p = shape.getCenterPoint();
+            labelText.set({ left: p.x, top: p.y, angle: shape.angle || 0 });
+            labelText.setCoords();
+        });
+        shape.on('scaling', () => {
+            const p = shape.getCenterPoint();
+            const w = shape.getScaledWidth();
+            const h = shape.getScaledHeight();
+            labelText.set({
+                left: p.x,
+                top: p.y,
+                fontSize: Math.max(8, Math.min(w, h) / 6)
+            });
+            labelText.setCoords();
+        });
+        shape.on('rotating', () => {
+            labelText.set({ angle: shape.angle || 0 });
+            labelText.setCoords();
+        });
+
+        canvas.add(shape);
+        canvas.add(labelText);
+        canvas.setActiveObject(shape);
+        if (canvas.overlayImage) canvas.bringObjectToFront(canvas.overlayImage);
+        canvas.renderAll();
+    };
+
+    const getSortedPlaceholders = (targetCanvas) => (
+        targetCanvas.getObjects()
+            .filter((o) => o.role === 'placeholder')
+            .sort((a, b) => a.left - b.left)
+    );
+
+    const resolvePlaceholderForSlot = (sortedPlaceholders, slot) => {
+        if (!sortedPlaceholders.length) return null;
+        if (sortedPlaceholders.length === 1) return sortedPlaceholders[0];
+        if (sortedPlaceholders.length === 2) {
+            if (slot === 'right') return sortedPlaceholders[1];
+            return sortedPlaceholders[0]; // left/center => first side
+        }
+        if (slot === 'left') return sortedPlaceholders[0];
+        if (slot === 'right') return sortedPlaceholders[sortedPlaceholders.length - 1];
+        return sortedPlaceholders[Math.floor(sortedPlaceholders.length / 2)];
+    };
+
+    const normalizeShapeType = (shape) => {
+        const s = String(shape || '').toLowerCase();
+        if (!s || s === 'auto') return 'auto';
+        if (s === 'rect') return 'rectangle';
+        return s;
+    };
+
+    const getEffectiveSlotShape = (slot) => {
+        if (hasAdminLockedShapes && adminMockupShapeBySide[slot]) {
+            return normalizeShapeType(adminMockupShapeBySide[slot]);
+        }
+        const selected = normalizeShapeType(uploadShapeBySlot?.[slot] || selectedUploadShape);
+        if (selected !== 'auto') return selected;
+        return normalizeShapeType(placeholderShapeBySide?.[slot]) || 'rectangle';
+    };
+
+    const resolveShapeTargetSlots = () => {
+        if (!isWrapProduct) return ['center'];
+        if (customizationMode === 'singlePhotoBothSides') return ['left', 'center', 'right'];
+        if (customizationMode === 'photoAndText') return [photoSide];
+        if (customizationMode === 'wrapPhotos') return [shapeTargetSlot || 'center'];
+        return ['center'];
+    };
+
+    const applyUploadShapeSelection = async (shapeType) => {
+        const normalized = normalizeShapeType(shapeType);
+        setSelectedUploadShape(normalized);
+        const targetSlots = resolveShapeTargetSlots();
+        const currentSlot = getCurrentShapeTarget();
+
+        setUploadShapeBySlot((prev) => {
+            const next = { ...prev };
+            targetSlots.forEach((slot) => { next[slot] = normalized; });
+            return next;
+        });
+
+        if (canvas) {
+            const objects = canvas.getObjects();
+            const placeholders = objects.filter(o => o.role === 'placeholder');
+            const targetPlaceholder = placeholders.find(p => p.slot === currentSlot) || placeholders[0];
+
+            if (targetPlaceholder) {
+                // Determine target dimensions
+                let width = targetPlaceholder.getScaledWidth();
+                let height = targetPlaceholder.getScaledHeight();
+                let left = targetPlaceholder.getCenterPoint().x;
+                let top = targetPlaceholder.getCenterPoint().y;
+                let angle = targetPlaceholder.angle;
+                let pathData = null;
+                let shapeToUse = normalized;
+
+                // Handle 'Auto' reset to template defaults if possible
+                if (normalized === 'auto') {
+                    const original = initialPlaceholdersRef.current[currentSlot];
+                    if (original) {
+                        width = original.width * original.scaleX;
+                        height = original.height * original.scaleY;
+                        left = original.left;
+                        top = original.top;
+                        angle = original.angle;
+                        shapeToUse = original.shapeType;
+                        pathData = original.path;
+                    } else {
+                        // Fallback
+                        if (width < 50) { width = 200; height = 150; }
+                        shapeToUse = (normalizeShapeType(placeholderShapeBySide?.[currentSlot]) || 'rectangle');
+                    }
+                }
+
+                const label = objects.find(o => o.id === `label_${targetPlaceholder.id}`);
+                if (label) canvas.remove(label);
+
+                // ALSO remove any existing clipped image in this slot before adding a new shape
+                const existingImage = objects.find(o => o.role === 'clipped-image' && (o.sideSlot === currentSlot || o.maskRef === targetPlaceholder));
+                if (existingImage) canvas.remove(existingImage);
+
+                canvas.remove(targetPlaceholder);
+
+                await addPhotoFrame(shapeToUse, pathData, {
+                    left: left,
+                    top: top,
+                    width: width,
+                    height: height,
+                    angle: angle,
+                    slot: currentSlot
+                });
+
+                canvas.renderAll();
+            } else {
+                addPhotoFrame(normalized, null, { slot: currentSlot });
+            }
+        }
+    };
+
+    const getCurrentShapeTarget = () => {
+        if (!isWrapProduct) return 'center';
+        if (customizationMode === 'singlePhotoBothSides') return 'center';
+        if (customizationMode === 'photoAndText') return photoSide;
+        if (customizationMode === 'wrapPhotos') return shapeTargetSlot || 'center';
+        return 'center';
+    };
+
+    // Keep shape selector synced with current mode/slot context.
+    useEffect(() => {
+        const slot = getCurrentShapeTarget();
+        const current = uploadShapeBySlot?.[slot] || 'auto';
+        setSelectedUploadShape(current);
+    }, [customizationMode, photoSide, shapeTargetSlot, isWrapProduct, uploadShapeBySlot]);
+
+    const buildMaskForShape = async (placeholder, shapeType) => {
+        const shape = normalizeShapeType(shapeType);
+        if (!placeholder || shape === 'auto') {
+            const cloned = await placeholder.clone();
+            cloned.set({ absolutePositioned: true, selectable: false, evented: false });
+            return cloned;
+        }
+
+        const center = placeholder.getCenterPoint();
+        // Use unscaled dimensions for the procedural shape, then apply mask's scale for consistency
+        const width = placeholder.width || (placeholder.radius ? placeholder.radius * 2 : 200);
+        const height = placeholder.height || (placeholder.radius ? placeholder.radius * 2 : 200);
+
+        const base = {
+            left: center.x,
+            top: center.y,
+            originX: 'center',
+            originY: 'center',
+            scaleX: placeholder.scaleX || 1,
+            scaleY: placeholder.scaleY || 1,
+            angle: placeholder.angle || 0,
+            absolutePositioned: true,
+            evented: false,
+            selectable: false
+        };
+
+        if (shape === 'rectangle') {
+            return new fabric.Rect({ ...base, width, height });
+        }
+        if (shape === 'circle') {
+            const r = Math.min(width, height) / 2;
+            return new fabric.Circle({ ...base, radius: r });
+        }
+        if (shape === 'heart') {
+            const w = width;
+            const h = height;
+            const d = `M ${w * 0.5} ${h * 0.95} C ${w * 1.05} ${h * 0.55}, ${w * 0.9} ${h * 0.1}, ${w * 0.5} ${h * 0.3} C ${w * 0.1} ${h * 0.1}, ${-w * 0.05} ${h * 0.55}, ${w * 0.5} ${h * 0.95} Z`;
+            return new fabric.Path(d, { ...base });
+        }
+        if (shape === 'mug-wrap') {
+            const c = Math.max(8, Math.min(35, height * 0.2));
+            const d = `M 0 ${c} Q ${width / 2} ${c * 2.5} ${width} ${c} L ${width} ${height} Q ${width / 2} ${height + c * 1.5} 0 ${height} Z`;
+            return new fabric.Path(d, { ...base });
+        }
+        if (shape === 'star') {
+            const d = "M 50 0 L 61 35 L 98 35 L 68 57 L 79 91 L 50 70 L 21 91 L 32 57 L 2 35 L 39 35 Z";
+            return new fabric.Path(d, { ...base, width: 100, height: 100, scaleX: (width / 100) * base.scaleX, scaleY: (height / 100) * base.scaleY });
+        }
+        if (shape === 'triangle') {
+            return new fabric.Triangle({ ...base, width, height });
+        }
+
+        const cloned = await placeholder.clone();
+        cloned.set({ absolutePositioned: true, selectable: false, evented: false });
+        return cloned;
+    };
+
+    const upsertSideText = () => {
+        if (!canvas || !photoTextValue.trim()) {
+            toast.error('Please enter text first');
+            return;
+        }
+
+        const slotXMap = {
+            left: canvas.width * 0.25,
+            center: canvas.width * 0.5,
+            right: canvas.width * 0.75
+        };
+
+        canvas.getObjects()
+            .filter((o) => o.role === 'side-text')
+            .forEach((o) => canvas.remove(o));
+
+        const existing = canvas.getObjects().find(
+            (o) => o.role === 'side-text' && o.sideSlot === textSide
+        );
+
+        if (existing) {
+            existing.set({ text: photoTextValue.trim() });
+            canvas.setActiveObject(existing);
+        } else {
+            const textObj = new fabric.IText(photoTextValue.trim(), {
+                fontFamily: 'Arial',
+                fontSize: 28,
+                fill: '#111827',
+                fontWeight: 'bold',
+                originX: 'center',
+                originY: 'center',
+                left: slotXMap[textSide] || slotXMap.right,
+                top: canvas.height / 2,
+                role: 'side-text',
+                sideSlot: textSide,
+                textSlot: textSide
+            });
+            canvas.add(textObj);
+            canvas.setActiveObject(textObj);
+        }
+
+        if (canvas.overlayImage) canvas.bringObjectToFront(canvas.overlayImage);
+        canvas.renderAll();
+        setSlotAssets((prev) => ({
+            ...prev,
+            [textSide]: {
+                ...prev[textSide],
+                text: photoTextValue.trim()
+            }
+        }));
+        toast.success('Text applied');
+    };
+
     const handleImageUpload = async (e) => {
         const file = e.target.files?.[0];
         if (!file || !canvas) {
@@ -430,52 +973,18 @@ const CustomizeProduct = () => {
 
         const loadingToast = toast.loading('Uploading...');
         try {
-            // ── Step 1: Find the target placeholder ──────────────────────────────────
-            let placeholder = canvas.activePlaceholder || canvas.getActiveObject();
-
-            // Must be an actual placeholder
-            if (placeholder && placeholder.role !== 'placeholder') placeholder = null;
-
-            // Fallback A: first visible placeholder by role
-            if (!placeholder) {
-                const candidates = canvas.getObjects().filter(o => o.role === 'placeholder');
-                placeholder = candidates.find(o => o.visible !== false) || candidates[0];
-            }
-
-            // Fallback B: by ID (Prioritize Mug Wrap)
-            if (!placeholder) {
-                const mugArea = canvas.getObjects().find(o => o.id && o.id.includes('mug_wrap_area'));
-                placeholder = mugArea || canvas.getObjects().find(o =>
-                    o.id && (o.id === 'user_photo_area' || o.id.startsWith('placeholder'))
-                );
-            }
-
-            // Fallback C: largest non-background shape
-            if (!placeholder) {
-                const shapes = canvas.getObjects().filter(o => {
-                    if (o.id === 'background_image' || o.role === 'placeholder-label') return false;
-                    if (o.type === 'image') return false;
-                    return true;
-                });
-                if (shapes.length > 0) {
-                    const area = (o) => {
-                        try {
-                            if (o.type === 'path' && o.getBoundingRect) {
-                                const r = o.getBoundingRect(); return r.width * r.height;
-                            }
-                            return (o.getScaledWidth?.() || 0) * (o.getScaledHeight?.() || 0);
-                        } catch { return 0; }
-                    };
-                    shapes.sort((a, b) => area(b) - area(a));
-                    placeholder = shapes[0];
-                    placeholder.set({ role: 'placeholder' });
-                    placeholder.role = 'placeholder';
+            const slotsToApply = (() => {
+                if (!isWrapProduct) return [activeUploadSlot || 'center'];
+                const sortedPh = getSortedPlaceholders(canvas);
+                const n = sortedPh.length;
+                if (customizationMode === 'singlePhotoBothSides') {
+                    // One print area on template: upload once, mirror URL to left/right for 3D preview
+                    if (n <= 1) return ['center'];
+                    return ['left', 'right'];
                 }
-            }
-
-            if (!placeholder) {
-                return toast.error('No photo area found. Ask admin to mark a placeholder.', { id: loadingToast });
-            }
+                if (customizationMode === 'photoAndText') return [photoSide];
+                return [activeUploadSlot || 'center'];
+            })();
 
             // ── Step 2: Upload raw image to Cloudinary ───────────────────────────────
             toast.loading('Uploading 0%', {
@@ -500,116 +1009,402 @@ const CustomizeProduct = () => {
 
             const imageUrl = uploadRes.data.url;
 
-            // ── Step 3: Load image into Fabric.js ───────────────────────────────────
-            let img;
-            try {
-                img = await fabric.FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' });
-            } catch (loadErr) {
-                console.error('Image load failed:', loadErr);
-                return toast.error('Image could not be loaded. Try another image.', { id: loadingToast });
-            }
+            // ── NEW: Handle User-Added Shape Filling ───────────────────────────
+            if (canvas.activePlaceholder) {
+                const placeholder = canvas.activePlaceholder;
+                canvas.activePlaceholder = null;
 
-            if (!img || !img.width) {
-                return toast.error('Invalid image from server. Try again.', { id: loadingToast });
-            }
+                const img = await fabric.FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' });
+                if (!img) return;
 
-            // ── Step 4: Clone placeholder → use as Fabric clipPath ───────────────────
-            // This works for ANY shape: Heart (path), Star (polygon), Circle, Rect, free-draw, etc.
-            let clipMask = null;
-            try {
-                clipMask = await placeholder.clone();
-                clipMask.set({
-                    absolutePositioned: true,
-                    left: placeholder.left,
-                    top: placeholder.top,
-                    scaleX: placeholder.scaleX || 1,
-                    scaleY: placeholder.scaleY || 1,
+                // Clone shape as mask
+                const clipMask = await placeholder.clone();
+                clipMask.set({ absolutePositioned: true, evented: false, selectable: false });
+
+                const pW = placeholder.getScaledWidth();
+                const pH = placeholder.getScaledHeight();
+                const center = placeholder.getCenterPoint();
+                const scale = Math.max(pW / img.width, pH / img.height);
+
+                img.set({
+                    left: center.x,
+                    top: center.y,
+                    originX: 'center',
+                    originY: 'center',
                     angle: placeholder.angle || 0,
-                    originX: placeholder.originX || 'center',
-                    originY: placeholder.originY || 'center',
-                    evented: false,
-                    selectable: false
+                    scaleX: scale,
+                    scaleY: scale,
+                    clipPath: clipMask,
+                    role: 'clipped-image',
+                    maskRef: placeholder,
+                    selectable: true,
+                    evented: true,
+                    perPixelTargetFind: true,
+                    lockRotatingPoint: true,
+                    cornerStyle: 'circle',
+                    cornerColor: '#2563eb',
+                    borderColor: '#2563eb',
+                    transparentCorners: false
                 });
-            } catch (cloneErr) {
-                console.warn('Could not clone placeholder for clipPath:', cloneErr);
-                clipMask = null;
+
+                img.setControlsVisibility({
+                    mt: false, mb: false, ml: false, mr: false,
+                    bl: true, br: true, tl: true, tr: true,
+                    mtr: false
+                });
+
+                placeholder.set({
+                    visible: false,
+                    selectable: false,
+                    evented: false,
+                    lockMovementX: true,
+                    lockMovementY: true
+                });
+
+                const label = canvas.getObjects().find((o) =>
+                    o.role === 'placeholder-label' && (o.placeholderRef === placeholder || o.id === `label_${placeholder.id}`)
+                );
+                if (label) label.set({ visible: false });
+
+                canvas.add(img);
+                canvas.setActiveObject(img);
+                if (canvas.overlayImage) canvas.bringObjectToFront(canvas.overlayImage);
+                canvas.renderAll();
+
+                // ── Step 8: Trigger 3D preview visibility for relevant categories ───────────
+                const catL = (template.category || '').toLowerCase();
+                const nameL = (template.name || '').toLowerCase();
+                const is3D = catL.includes('mug') || catL.includes('bottle') || catL.includes('case') || nameL.includes('mug') ||
+                    template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'phone';
+
+                if (is3D) {
+                    setTimeout(() => {
+                        if (canvas) {
+                            // 1. Capture FULL VIEW for display
+                            canvas.discardActiveObject();
+                            canvas.renderAll();
+                            const fullView = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 2 });
+                            setPreviewImage(fullView);
+
+                            // 2. Capture DESIGN ONLY for 3D mapping (Transparent & Cropped)
+                            const allObjects = canvas.getObjects();
+                            const designObjects = allObjects.filter(o =>
+                                o.role === 'clipped-image' ||
+                                o.role === 'side-text' ||
+                                o.role === 'free-image' ||
+                                (o.type === 'i-text' && o.role !== 'placeholder-label')
+                            );
+                            const nonDesignObjects = allObjects.filter(o => !designObjects.includes(o));
+                            const originalVis = nonDesignObjects.map(o => ({ obj: o, visible: o.visible }));
+                            const originalBg = canvas.backgroundColor;
+
+                            nonDesignObjects.forEach(o => o.set('visible', false));
+                            canvas.set('backgroundColor', null);
+                            canvas.renderAll();
+
+                            let exportOptions = { format: 'png', quality: 1, multiplier: 2 };
+                            if (designObjects.length > 0) {
+                                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                                designObjects.forEach(obj => {
+                                    const rect = obj.getBoundingRect(true);
+                                    minX = Math.min(minX, rect.left);
+                                    minY = Math.min(minY, rect.top);
+                                    maxX = Math.max(maxX, rect.left + rect.width);
+                                    maxY = Math.max(maxY, rect.top + rect.height);
+                                });
+                                const padding = 2;
+                                exportOptions.left = Math.max(0, minX - padding);
+                                exportOptions.top = Math.max(0, minY - padding);
+                                exportOptions.width = Math.min(canvas.width - exportOptions.left, (maxX - minX) + padding * 2);
+                                exportOptions.height = Math.min(canvas.height - exportOptions.top, (maxY - minY) + padding * 2);
+                            }
+
+                            const snapshot = canvas.toDataURL(exportOptions);
+                            setMugPreviewUrl(snapshot);
+                            setShowMugPreview(true);
+
+                            // Restore
+                            originalVis.forEach(item => item.obj.set('visible', item.visible));
+                            canvas.set('backgroundColor', originalBg);
+                            canvas.renderAll();
+                        }
+                    }, 250);
+                }
+
+                toast.success('Photo added to shape!', { id: loadingToast });
+                return;
+            }
+            // ──────────────────────────────────────────────────────────────────
+
+            const putImageInSlot = async (slot) => {
+                let img;
+                try {
+                    img = await fabric.FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' });
+                } catch (loadErr) {
+                    console.error('Image load failed:', loadErr);
+                    return;
+                }
+                if (!img || !img.width) return;
+
+                const sorted = getSortedPlaceholders(canvas);
+                const placeholder = resolvePlaceholderForSlot(sorted, slot);
+                const slotXMap = { left: canvas.width * 0.25, center: canvas.width * 0.5, right: canvas.width * 0.75 };
+
+                if (!placeholder) {
+                    const freeShape = getEffectiveSlotShape(slot);
+                    const oldFreeForSlot = canvas.getObjects().find((o) => o.role === 'free-image' && o.sideSlot === slot);
+                    if (oldFreeForSlot) canvas.remove(oldFreeForSlot);
+                    const scale = Math.min((canvas.width * 0.3) / img.width, (canvas.height * 0.4) / img.height) || 0.5;
+                    img.set({
+                        left: slotXMap[slot] || slotXMap.center,
+                        top: canvas.height / 2,
+                        originX: 'center',
+                        originY: 'center',
+                        scaleX: scale,
+                        scaleY: scale,
+                        role: 'free-image',
+                        sideSlot: slot,
+                        imageSlot: slot,
+                        selectable: true,
+                        evented: true,
+                        cornerStyle: 'circle',
+                        cornerColor: 'blue',
+                        borderColor: 'blue',
+                        transparentCorners: false
+                    });
+                    canvas.add(img);
+                    setSlotAssets((prev) => ({
+                        ...prev,
+                        [slot]: { ...prev[slot], imageUrl, shapeType: freeShape, transform: { zoom: 1, offsetX: 0, offsetY: 0 } }
+                    }));
+                    setSlotShapeOverrides((prev) => ({ ...prev, [slot]: freeShape }));
+                    return;
+                }
+
+                const effectiveShape = getEffectiveSlotShape(slot);
+                let clipMask = null;
+                try {
+                    clipMask = await buildMaskForShape(placeholder, effectiveShape);
+                    clipMask.set({
+                        absolutePositioned: true,
+                        evented: false,
+                        selectable: false
+                    });
+                } catch (cloneErr) {
+                    console.warn('Could not clone placeholder for clipPath:', cloneErr);
+                }
+
+                let pW;
+                let pH;
+                try {
+                    if (placeholder.type === 'path' && typeof placeholder.getBoundingRect === 'function') {
+                        const r = placeholder.getBoundingRect();
+                        pW = r.width;
+                        pH = r.height;
+                    } else {
+                        pW = placeholder.getScaledWidth?.() ?? (placeholder.width * (placeholder.scaleX || 1));
+                        pH = placeholder.getScaledHeight?.() ?? (placeholder.height * (placeholder.scaleY || 1));
+                    }
+                } catch {
+                    pW = 200;
+                    pH = 200;
+                }
+                if (!pW || !pH || !Number.isFinite(pW) || !Number.isFinite(pH)) {
+                    pW = 200;
+                    pH = 200;
+                }
+
+                const center = (typeof placeholder.getCenterPoint === 'function')
+                    ? placeholder.getCenterPoint()
+                    : { x: slotXMap[slot] || canvas.width / 2, y: canvas.height / 2 };
+                const scale = Math.max(pW / img.width, pH / img.height);
+
+                img.set({
+                    left: center.x,
+                    top: center.y,
+                    originX: 'center',
+                    originY: 'center',
+                    angle: placeholder.angle || 0,
+                    scaleX: scale,
+                    scaleY: scale,
+                    clipPath: clipMask || undefined,
+                    role: 'clipped-image',
+                    sideSlot: slot,
+                    imageSlot: slot,
+                    maskRef: placeholder,
+                    selectable: true,
+                    evented: true,
+                    // Fix ghosting: only grab the photo where it's visible
+                    perPixelTargetFind: true,
+                    // Unlock scaling handles to allow zoom for horizontal panning
+                    lockScalingX: false,
+                    lockScalingY: false,
+                    lockRotation: true,
+                    hasControls: true,
+                    hasRotatingPoint: false,
+                    cornerStyle: 'circle',
+                    cornerColor: '#2563eb', // Blue-600
+                    cornerSize: 10,
+                    borderColor: '#2563eb',
+                    transparentCorners: false
+                });
+
+                // Enable essential controls
+                img.setControlsVisibility({
+                    mt: false, mb: false, ml: false, mr: false,
+                    bl: true, br: true, tl: true, tr: true,
+                    mtr: false
+                });
+
+                placeholder.set({
+                    visible: false,
+                    selectable: false,
+                    evented: false,
+                    lockMovementX: true,
+                    lockMovementY: true
+                });
+
+                const oldImage = canvas.getObjects().find((o) => {
+                    if (o.role !== 'clipped-image') return false;
+                    // For wrap products, multiple side slots can share the same placeholder.
+                    // Replace only the image for the same side slot.
+                    if (isWrapProduct) return o.sideSlot === slot;
+                    return o.maskRef === placeholder || o.sideSlot === slot;
+                });
+                if (oldImage) canvas.remove(oldImage);
+
+                const labelId = `label_${placeholder.id}`;
+                const label = canvas.getObjects().find((o) =>
+                    o.id === labelId || (o.role === 'placeholder-label' && o.placeholderRef === placeholder)
+                );
+                if (label) label.set({ visible: false });
+
+                canvas.add(img);
+                setSlotAssets((prev) => ({
+                    ...prev,
+                    [slot]: { ...prev[slot], imageUrl, shapeType: effectiveShape, transform: { zoom: 1, offsetX: 0, offsetY: 0 } }
+                }));
+                setSlotShapeOverrides((prev) => ({ ...prev, [slot]: effectiveShape }));
+            };
+
+            for (const slot of slotsToApply) {
+                // eslint-disable-next-line no-await-in-loop
+                await putImageInSlot(slot);
             }
 
-            // ── Step 5: Get placeholder bounding size ────────────────────────────────
-            let pW, pH;
-            try {
-                if (placeholder.type === 'path' && typeof placeholder.getBoundingRect === 'function') {
-                    const r = placeholder.getBoundingRect();
-                    pW = r.width; pH = r.height;
-                } else {
-                    pW = placeholder.getScaledWidth?.() ?? (placeholder.width * (placeholder.scaleX || 1));
-                    pH = placeholder.getScaledHeight?.() ?? (placeholder.height * (placeholder.scaleY || 1));
-                }
-            } catch { /* ignore */ }
-            if (!pW || !pH || !Number.isFinite(pW) || !Number.isFinite(pH)) { pW = 200; pH = 200; }
+            const phCount = getSortedPlaceholders(canvas).length;
 
-            // ── Step 6: Position & scale image to cover the placeholder ──────────────
-            const center = (typeof placeholder.getCenterPoint === 'function')
-                ? placeholder.getCenterPoint()
-                : { x: canvas.width / 2, y: canvas.height / 2 };
+            if (customizationMode === 'singlePhotoBothSides') {
+                const bothShape = getEffectiveSlotShape('center');
+                setSlotAssets((prev) => ({
+                    ...prev,
+                    ...(phCount <= 1
+                        ? {
+                            left: { ...prev.left, imageUrl, shapeType: bothShape, transform: prev.center?.transform || { zoom: 1, offsetX: 0, offsetY: 0 } },
+                            right: { ...prev.right, imageUrl, shapeType: bothShape, transform: prev.center?.transform || { zoom: 1, offsetX: 0, offsetY: 0 } },
+                            center: { ...prev.center, imageUrl, shapeType: bothShape, transform: prev.center?.transform || { zoom: 1, offsetX: 0, offsetY: 0 } }
+                        }
+                        : {
+                            left: { ...prev.left, imageUrl, shapeType: getEffectiveSlotShape('left'), transform: prev.left?.transform || { zoom: 1, offsetX: 0, offsetY: 0 } },
+                            right: { ...prev.right, imageUrl, shapeType: getEffectiveSlotShape('right'), transform: prev.right?.transform || { zoom: 1, offsetX: 0, offsetY: 0 } }
+                        })
+                }));
+                setSlotShapeOverrides((prev) => ({
+                    ...prev,
+                    left: phCount <= 1 ? bothShape : getEffectiveSlotShape('left'),
+                    right: phCount <= 1 ? bothShape : getEffectiveSlotShape('right'),
+                    ...(phCount <= 1 ? { center: bothShape } : {})
+                }));
+            }
 
-            const scale = Math.max(pW / img.width, pH / img.height);
-
-            img.set({
-                left: center.x,
-                top: center.y,
-                originX: 'center',
-                originY: 'center',
-                angle: placeholder.angle || 0,
-                scaleX: scale,
-                scaleY: scale,
-                clipPath: clipMask || undefined,  // ← key: shape mask applied here
-                role: 'clipped-image',
-                maskRef: placeholder,
-                selectable: true,
-                evented: true
-            });
-
-            // ── Step 7: Hide placeholder + label, show image ─────────────────────────
-            placeholder.set({
-                visible: false,
-                selectable: false, // Fully lock the shape
-                evented: false,    // Shape can no longer be clicked
-                lockMovementX: true,
-                lockMovementY: true
-            });
-
-            const labelId = `label_${placeholder.id}`;
-            const label = canvas.getObjects().find(o =>
-                o.id === labelId || (o.role === 'placeholder-label' && o.placeholderRef === placeholder)
-            );
-            if (label) label.set({ visible: false });
+            if (customizationMode === 'photoAndText') {
+                setSlotAssets((prev) => ({
+                    ...prev,
+                    [photoSide]: { ...prev[photoSide], imageUrl, shapeType: getEffectiveSlotShape(photoSide), transform: prev[photoSide]?.transform || { zoom: 1, offsetX: 0, offsetY: 0 } },
+                    [textSide]: { ...prev[textSide], text: photoTextValue.trim() }
+                }));
+                setSlotShapeOverrides((prev) => ({ ...prev, [photoSide]: getEffectiveSlotShape(photoSide) }));
+            }
 
             canvas.activePlaceholder = null;
-
-            canvas.add(img);
-            canvas.setActiveObject(img);
+            const latestPlaced = canvas.getObjects().find(
+                (o) => o.role === 'clipped-image' || o.role === 'free-image'
+            );
+            if (latestPlaced) canvas.setActiveObject(latestPlaced);
             if (canvas.overlayImage) canvas.bringObjectToFront(canvas.overlayImage);
-            canvas.bringObjectToFront(img);
+
             canvas.renderAll();
 
             // ── Step 8: Trigger 3D preview visibility for relevant categories ───────────
             const catL = (template.category || '').toLowerCase();
-            const is3D = catL.includes('mug') || catL.includes('bottle') || catL.includes('case') ||
-                template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'phone' ||
-                (placeholder && placeholder.shapeType === 'mug-wrap');
+            const nameL = (template.name || '').toLowerCase();
+            const is3D = catL.includes('mug') || catL.includes('bottle') || catL.includes('case') || nameL.includes('mug') ||
+                template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'phone';
 
             if (is3D) {
-                setMugPreviewUrl(imageUrl);
-                setShowMugPreview(true);
+                // Wait briefly for canvas to finish updating, then take snapshots
+                setTimeout(() => {
+                    if (canvas) {
+                        // 1. Capture FULL VIEW for display
+                        canvas.discardActiveObject();
+                        canvas.renderAll();
+                        const fullView = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 2 });
+                        setPreviewImage(fullView);
+
+                        // 2. Capture DESIGN ONLY for 3D mapping (Transparent & Cropped)
+                        const allObjects = canvas.getObjects();
+                        const designObjects = allObjects.filter(o =>
+                            o.role === 'clipped-image' ||
+                            o.role === 'side-text' ||
+                            o.role === 'free-image' ||
+                            (o.type === 'i-text' && o.role !== 'placeholder-label')
+                        );
+                        const nonDesignObjects = allObjects.filter(o => !designObjects.includes(o));
+                        const originalVis = nonDesignObjects.map(o => ({ obj: o, visible: o.visible }));
+                        const originalBg = canvas.backgroundColor;
+
+                        nonDesignObjects.forEach(o => o.set('visible', false));
+                        canvas.set('backgroundColor', null);
+                        canvas.renderAll();
+
+                        let exportOptions = { format: 'png', quality: 1, multiplier: 2 };
+                        if (designObjects.length > 0) {
+                            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                            designObjects.forEach(obj => {
+                                const rect = obj.getBoundingRect(true);
+                                minX = Math.min(minX, rect.left);
+                                minY = Math.min(minY, rect.top);
+                                maxX = Math.max(maxX, rect.left + rect.width);
+                                maxY = Math.max(maxY, rect.top + rect.height);
+                            });
+                            const padding = 2;
+                            exportOptions.left = Math.max(0, minX - padding);
+                            exportOptions.top = Math.max(0, minY - padding);
+                            exportOptions.width = Math.min(canvas.width - exportOptions.left, (maxX - minX) + padding * 2);
+                            exportOptions.height = Math.min(canvas.height - exportOptions.top, (maxY - minY) + padding * 2);
+                        }
+
+                        const snapshot = canvas.toDataURL(exportOptions);
+                        setMugPreviewUrl(snapshot);
+                        setShowMugPreview(true);
+
+                        // Restore visibility and background
+                        originalVis.forEach(item => item.obj.set('visible', item.visible));
+                        canvas.set('backgroundColor', originalBg);
+                        canvas.renderAll();
+                    }
+                }, 250);
             }
 
             toast.success('Image uploaded! Drag to reposition.', {
                 id: loadingToast,
                 style: { background: '#f0fdf4', border: '1px solid #86efac', color: '#16a34a', fontWeight: 'bold' }
             });
+
+            // Reset the layout slot
+            setActiveUploadSlot(null);
         } catch (err) {
-            console.error(err);
+            console.error('Upload Error:', err);
             const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Error uploading image';
             toast.error(msg, { id: loadingToast });
         }
@@ -630,26 +1425,67 @@ const CustomizeProduct = () => {
         const loadingToast = toast.loading(directBuy ? "Preparing Checkout..." : "Adding to Cart...");
 
         try {
-            // Hide selection/UI before exporting
-            const ui = canvas.getObjects().filter(o => o.role === 'placeholder' || o.role === 'placeholder-label');
-            ui.forEach(o => o.set('visible', false));
+            // IMPROVED: Hide ALL non-design elements for a clean export
+            const allObjects = canvas.getObjects();
+            const designObjects = allObjects.filter(o =>
+                o.role === 'clipped-image' ||
+                o.role === 'side-text' ||
+                o.role === 'free-image' ||
+                (o.type === 'i-text' && o.role !== 'placeholder-label')
+            );
+            const envObjects = allObjects.filter(o => !designObjects.includes(o));
+
+            // Save original visibility and background
+            const originalVis = envObjects.map(o => ({ obj: o, visible: o.visible }));
+            const originalBg = canvas.backgroundColor;
+
+            envObjects.forEach(o => o.set('visible', false));
+            canvas.set('backgroundColor', null);
             canvas.discardActiveObject();
             canvas.renderAll();
 
-            const data = await uploadDesign(canvas.toDataURL({ multiplier: 2 }));
-            ui.forEach(o => o.set('visible', true));
+            // Calculate bounding box for cropped export
+            let exportOptions = { multiplier: 2, format: 'png' };
+            if (designObjects.length > 0) {
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                designObjects.forEach(obj => {
+                    const rect = obj.getBoundingRect(true);
+                    minX = Math.min(minX, rect.left);
+                    minY = Math.min(minY, rect.top);
+                    maxX = Math.max(maxX, rect.left + rect.width);
+                    maxY = Math.max(maxY, rect.top + rect.height);
+                });
+                const padding = 2;
+                exportOptions.left = Math.max(0, minX - padding);
+                exportOptions.top = Math.max(0, minY - padding);
+                exportOptions.width = Math.min(canvas.width - exportOptions.left, (maxX - minX) + padding * 2);
+                exportOptions.height = Math.min(canvas.height - exportOptions.top, (maxY - minY) + padding * 2);
+            }
 
-            const payload = { 
-                template: template._id, 
-                customizedJson: canvas.toJSON(), 
-                finalImageUrl: data.url, 
-                price: template.basePrice, 
+            const data = await uploadDesign(canvas.toDataURL(exportOptions));
+
+            // Restore visibility and background
+            originalVis.forEach(item => item.obj.set('visible', item.visible));
+            canvas.set('backgroundColor', originalBg);
+            canvas.renderAll();
+
+            const uploadedImages = Object.values(slotAssets)
+                .map(s => s.imageUrl)
+                .filter(url => !!url);
+
+            const payload = {
+                template: template._id,
+                customizedJson: canvas.toJSON(),
+                slotAssets: slotAssets,
+                userUploadedImages: [...new Set(uploadedImages)],
+                finalImageUrl: data.url,
+                price: template.basePrice,
                 quantity: quantity,
                 packingCharges: template.packingCharges || 0,
                 shippingCharges: template.shippingCharges || 0,
                 templateData: template
             };
-            
+
             if (directBuy) {
                 // IMPORTANT: Separate flow for "Buy Now" - don't go to permanent cart
                 setBuyNowItem({
@@ -662,33 +1498,92 @@ const CustomizeProduct = () => {
                 await addToCart(payload);
                 toast.success("Added to cart!", { id: loadingToast });
             }
-        } catch (e) { 
+        } catch (e) {
             console.error(e);
-            toast.error("Process failed. Try again.", { id: loadingToast }); 
-        } finally { 
-            setLoadingAction(null); 
+            toast.error("Process failed. Try again.", { id: loadingToast });
+        } finally {
+            setLoadingAction(null);
         }
     };
 
     const handlePreview = () => {
-        const ui = canvas.getObjects().filter(o => o.role === 'placeholder' || o.role === 'placeholder-label');
-        ui.forEach(o => o.set('visible', false));
+        if (!canvas) return;
+
+        // 1. Capture FULL VIEW (Design + Product) for the 2D Display
         canvas.discardActiveObject();
         canvas.renderAll();
 
-        const designUrl = canvas.toDataURL({ multiplier: 2 });
-        setPreviewImage(designUrl);
+        // IMPROVED: Calculate crop for the Full View to make it "Larger" in the UI
+        let fullExportOptions = { multiplier: 2, format: 'png' };
+        const visibleObjects = canvas.getObjects().filter(o => o.visible);
+        if (visibleObjects.length > 0) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            visibleObjects.forEach(obj => {
+                const rect = obj.getBoundingRect(true);
+                minX = Math.min(minX, rect.left);
+                minY = Math.min(minY, rect.top);
+                maxX = Math.max(maxX, rect.left + rect.width);
+                maxY = Math.max(maxY, rect.top + rect.height);
+            });
+            const p = 12; // Padding to ensure shadows aren't cut
+            fullExportOptions.left = Math.max(0, minX - p);
+            fullExportOptions.top = Math.max(0, minY - p);
+            fullExportOptions.width = Math.min(canvas.width - fullExportOptions.left, (maxX - minX) + p * 2);
+            fullExportOptions.height = Math.min(canvas.height - fullExportOptions.top, (maxY - minY) + p * 2);
+        }
+        const fullViewUrl = canvas.toDataURL(fullExportOptions);
+        setPreviewImage(fullViewUrl);
 
-        // For 3D-capable templates, use the current full canvas design for the 3D preview
+        // 2. Identify and hide non-design elements for the 3D/Design Only view
+        const allObjects = canvas.getObjects();
+        const designObjects = allObjects.filter(o =>
+            o.role === 'clipped-image' ||
+            o.role === 'side-text' ||
+            o.role === 'free-image' ||
+            (o.type === 'i-text' && o.role !== 'placeholder-label')
+        );
+        const envObjects = allObjects.filter(o => !designObjects.includes(o));
+
+        const originalVis = envObjects.map(o => ({ obj: o, visible: o.visible }));
+        const originalBg = canvas.backgroundColor;
+
+        envObjects.forEach(o => o.set('visible', false));
+        canvas.set('backgroundColor', null);
+        canvas.renderAll();
+
+        // 3. Export DESIGN ONLY (Cropped to visible design for better 3D fit)
+        let exportOptions = { multiplier: 2, format: 'png' };
+        if (designObjects.length > 0) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            designObjects.forEach(obj => {
+                const rect = obj.getBoundingRect(true);
+                minX = Math.min(minX, rect.left);
+                minY = Math.min(minY, rect.top);
+                maxX = Math.max(maxX, rect.left + rect.width);
+                maxY = Math.max(maxY, rect.top + rect.height);
+            });
+            const padding = 2;
+            exportOptions.left = Math.max(0, minX - padding);
+            exportOptions.top = Math.max(0, minY - padding);
+            exportOptions.width = Math.min(canvas.width - exportOptions.left, (maxX - minX) + padding * 2);
+            exportOptions.height = Math.min(canvas.height - exportOptions.top, (maxY - minY) + padding * 2);
+        }
+        const designOnlyUrl = canvas.toDataURL(exportOptions);
+
+        // 4. Restore visibility and background
+        originalVis.forEach(item => item.obj.set('visible', item.visible));
+        canvas.set('backgroundColor', originalBg);
+        canvas.renderAll();
+
+        // 5. Set URLs for modal
         const catLower = (template.category || '').toLowerCase();
         const is3D = catLower.includes('mug') || catLower.includes('bottle') || catLower.includes('case') ||
             template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'phone';
 
         if (is3D || showMugPreview) {
-            setMugPreviewUrl(designUrl);
+            setMugPreviewUrl(designOnlyUrl);
         }
 
-        ui.forEach(o => o.set('visible', true));
         setPreviewModalOpen(true);
     };
 
@@ -782,9 +1677,9 @@ const CustomizeProduct = () => {
                                 {/* Flat Design View */}
                                 <div className="flex flex-col gap-3">
                                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-700 ml-4">2D Design Layout</span>
-                                    <div className="bg-gray-50 rounded-[2.5rem] aspect-square flex items-center justify-center p-8 relative overflow-hidden group">
+                                    <div className="bg-gray-50 rounded-[2.5rem] min-h-[460px] md:min-h-[500px] flex items-center justify-center p-6 md:p-8 relative overflow-hidden group">
                                         <div className="absolute inset-0 bg-gradient-to-tr from-gray-200/20 to-transparent"></div>
-                                        <img src={previewImage} alt="Final" className="max-h-full max-w-full object-contain drop-shadow-2xl z-10 transition-transform duration-500 group-hover:scale-110" />
+                                        <img src={previewImage} alt="Final" className="max-h-[96%] max-w-[96%] object-contain drop-shadow-2xl z-10 transition-transform duration-500 group-hover:scale-105" />
                                         {template.overlayImageUrl && (
                                             <img
                                                 src={template.overlayImageUrl}
@@ -797,22 +1692,30 @@ const CustomizeProduct = () => {
 
                                 {/* 3D View (If applicable) */}
                                 {(template?.wrapType === 'mug' || template?.wrapType === 'bottle' || showMugPreview) && (
-                                    <div className="flex flex-col gap-3">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-700 ml-4">3D Realistic Mockup</span>
-                                        <div className="bg-gray-50 rounded-[2.5rem] aspect-square flex items-center justify-center relative overflow-hidden group">
-                                            <div className="absolute inset-0 bg-gradient-to-bl from-indigo-100/30 to-transparent"></div>
-                                            <div className="scale-[0.8] transition-transform duration-500 group-hover:scale-[0.85]">
-                                                <MugWrapPreview
-                                                    photoUrl={mugPreviewUrl || previewImage}
-                                                    wrapType={template?.wrapType || (() => {
-                                                        const cat = (template.category || '').toLowerCase();
-                                                        if (cat.includes('mug')) return 'mug';
-                                                        if (cat.includes('bottle')) return 'bottle';
-                                                        if (cat.includes('case')) return 'phone';
-                                                        return 'mug';
-                                                    })()}
-                                                />
-                                            </div>
+                                    <div className="flex flex-col h-full bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden relative">
+                                        <div className="absolute top-4 right-4 z-20">
+                                            <button
+                                                onClick={() => setPreviewModalOpen(false)}
+                                                className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors bg-white shadow-sm"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                                Edit Again
+                                            </button>
+                                        </div>
+                                        <div className="flex-1 flex items-center justify-center p-4 min-h-[400px]">
+                                            <MugWrapPreview
+                                                photoUrl={mugPreviewUrl || previewImage}
+                                                mockupViews={template?.mockupViews}
+                                                slotAssets={slotAssets}
+                                                placeholderShapeBySide={previewShapeBySide}
+                                                wrapType={template?.wrapType || (() => {
+                                                    const cat = (template.category || '').toLowerCase();
+                                                    if (cat.includes('mug')) return 'mug';
+                                                    if (cat.includes('bottle')) return 'bottle';
+                                                    if (cat.includes('case')) return 'phone';
+                                                    return 'mug';
+                                                })()}
+                                            />
                                         </div>
                                     </div>
                                 )}
@@ -901,12 +1804,193 @@ const CustomizeProduct = () => {
                                 <TabButton name="image" icon="📷" label="Images" />
                                 <TabButton name="text" icon="T" label="Text" />
                                 <TabButton name="emoji" icon="😊" label="Emoji" />
-                                <TabButton name="shapes" icon="🔷" label="Shapes" />
                             </div>
                             <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
                                 {activeTab === 'image' && (
                                     <div className="space-y-4">
-                                        <button onClick={() => fileInputRef.current.click()} className="w-full border-2 border-dashed border-indigo-300 py-6 rounded-lg text-indigo-600 hover:bg-indigo-50 font-medium">+ Upload Photo</button>
+                                        <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-sm mb-4">
+                                            <div className="flex flex-col gap-1 mb-4">
+                                                <p className="text-[11px] font-[900] uppercase tracking-[0.15em] text-indigo-600">Step 1: Choose Photo Shape</p>
+                                                <p className="text-[10px] text-slate-400 font-medium italic">Shape select kare fir photo upload kare.</p>
+                                                <div className="text-[10px] bg-indigo-50 text-indigo-500 p-2.5 rounded-xl mt-2 font-bold flex items-start gap-2 leading-tight">
+                                                    <span className="text-sm mt-[-2px]">💡</span>
+                                                    <span>
+                                                        Click <b>"Select Photo"</b> text to upload. Drag the <b>shape</b> to move/resize.
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-4 gap-2">
+                                                {[
+                                                    { key: 'auto', label: 'Auto (Admin)', icon: '✨' },
+                                                    { key: 'heart', label: 'Heart', icon: '❤️' },
+                                                    { key: 'star', label: 'Star', icon: '⭐' },
+                                                    { key: 'rectangle', label: 'Rectangle', icon: '⬜' },
+                                                    { key: 'circle', label: 'Circle', icon: '⭕' },
+                                                    { key: 'mug-wrap', label: 'Wrap', icon: '🥤' }
+                                                ].map((s) => (
+                                                    <button
+                                                        key={s.key}
+                                                        onClick={() => applyUploadShapeSelection(s.key)}
+                                                        className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all ${(uploadShapeBySlot?.[getCurrentShapeTarget()] || 'auto') === s.key
+                                                                ? 'bg-indigo-50 border-indigo-600 shadow-sm'
+                                                                : 'bg-gray-50 border-transparent hover:bg-white hover:border-gray-200'
+                                                            }`}
+                                                    >
+                                                        <span className="text-xl mb-1.5">{s.icon}</span>
+                                                        <span className={`text-[8px] font-black uppercase text-center leading-tight ${(uploadShapeBySlot?.[getCurrentShapeTarget()] || 'auto') === s.key ? 'text-indigo-700' : 'text-slate-500'
+                                                            }`}>
+                                                            {s.label}
+                                                        </span>
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            {isWrapProduct && customizationMode === 'wrapPhotos' && (
+                                                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+                                                    <span className="text-[9px] font-black text-indigo-600 uppercase tracking-wider">Side:</span>
+                                                    <div className="flex-1 grid grid-cols-3 gap-1.5">
+                                                        {['left', 'center', 'right'].map((slot) => (
+                                                            <button
+                                                                key={`target-slot-${slot}`}
+                                                                onClick={() => setShapeTargetSlot(slot)}
+                                                                className={`py-1.5 rounded-lg text-[9px] font-[900] uppercase border-2 transition-all ${shapeTargetSlot === slot ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-400 border-slate-100'}`}
+                                                            >
+                                                                {slot}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {hasAdminLockedShapes && (
+                                            <div className="p-2 rounded-xl bg-indigo-50 border border-indigo-200">
+                                                <p className="text-[10px] font-black uppercase tracking-wider text-indigo-700 mb-1">Admin Shape Lock</p>
+                                                <p className="text-[10px] text-indigo-600 font-semibold">
+                                                    Preview shape follows admin side settings (front/left/right) exactly.
+                                                </p>
+                                            </div>
+                                        )}
+                                        {isWrapProduct && (
+                                            <div className="grid grid-cols-1 gap-2 p-2 rounded-xl bg-white border border-gray-200">
+                                                <button
+                                                    onClick={() => setCustomizationMode('singlePhotoBothSides')}
+                                                    className={`py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${customizationMode === 'singlePhotoBothSides' ? 'bg-indigo-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                                                >
+                                                    1) Single Photo Both Sides
+                                                </button>
+                                                <button
+                                                    onClick={() => setCustomizationMode('photoAndText')}
+                                                    className={`py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${customizationMode === 'photoAndText' ? 'bg-indigo-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                                                >
+                                                    2) One Side Photo + Other Side Text
+                                                </button>
+                                                <button
+                                                    onClick={() => setCustomizationMode('wrapPhotos')}
+                                                    className={`py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${customizationMode === 'wrapPhotos' ? 'bg-indigo-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                                                >
+                                                    3) Wrap with 1/2/3 Photos
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {(!isWrapProduct || customizationMode === 'singlePhotoBothSides') && (
+                                            <>
+                                                <button onClick={() => { setActiveUploadSlot('center'); fileInputRef.current.click(); }} className="w-full border-2 border-dashed border-indigo-400 py-4.5 rounded-xl text-indigo-600 hover:bg-indigo-50 font-black shadow-sm tracking-wide text-sm flex items-center justify-center gap-2 transition-all">
+                                                    📷 Upload One Photo <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full ml-1 font-bold">(Auto Both Sides)</span>
+                                                </button>
+                                            </>
+                                        )}
+
+                                        {isWrapProduct && customizationMode === 'photoAndText' && (
+                                            <div className="space-y-3">
+                                                <button onClick={() => { setActiveUploadSlot(photoSide); fileInputRef.current.click(); }} className="w-full border-2 border-dashed border-indigo-400 py-4 rounded-xl text-indigo-600 hover:bg-indigo-50 font-black shadow-sm tracking-wide text-sm flex items-center justify-center gap-2 transition-all">
+                                                    📷 Upload Photo Side
+                                                </button>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <button
+                                                        onClick={() => setPhotoSide('left')}
+                                                        className={`py-2 rounded-lg text-xs font-bold border transition-all ${photoSide === 'left' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200'}`}
+                                                    >
+                                                        Photo on Left
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setPhotoSide('center')}
+                                                        className={`py-2 rounded-lg text-xs font-bold border transition-all ${photoSide === 'center' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200'}`}
+                                                    >
+                                                        Photo on Center
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setPhotoSide('right')}
+                                                        className={`py-2 rounded-lg text-xs font-bold border transition-all ${photoSide === 'right' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200'}`}
+                                                    >
+                                                        Photo on Right
+                                                    </button>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <button
+                                                        onClick={() => setTextSide('left')}
+                                                        className={`py-2 rounded-lg text-xs font-bold border transition-all ${textSide === 'left' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}`}
+                                                    >
+                                                        Text on Left
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setTextSide('center')}
+                                                        className={`py-2 rounded-lg text-xs font-bold border transition-all ${textSide === 'center' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}`}
+                                                    >
+                                                        Text on Center
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setTextSide('right')}
+                                                        className={`py-2 rounded-lg text-xs font-bold border transition-all ${textSide === 'right' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}`}
+                                                    >
+                                                        Text on Right
+                                                    </button>
+                                                </div>
+                                                <textarea
+                                                    value={photoTextValue}
+                                                    onChange={(e) => setPhotoTextValue(e.target.value)}
+                                                    placeholder="Type text for opposite side..."
+                                                    rows={3}
+                                                    className="w-full border p-2 rounded-lg text-sm"
+                                                />
+                                                <button
+                                                    onClick={upsertSideText}
+                                                    className="w-full bg-slate-900 text-white py-3 rounded-xl hover:bg-slate-700 font-black tracking-[0.08em] uppercase text-xs"
+                                                >
+                                                    Apply Text on {textSide}
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {isWrapProduct && customizationMode === 'wrapPhotos' && (
+                                            <>
+                                                <button onClick={() => { setActiveUploadSlot('center'); fileInputRef.current.click(); }} className="w-full border-2 border-dashed border-indigo-400 py-4.5 rounded-xl text-indigo-600 hover:bg-indigo-50 font-black shadow-sm tracking-wide text-sm flex items-center justify-center gap-2 transition-all">
+                                                    📷 Wrap Photo 1 <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full ml-1 font-bold">(Front)</span>
+                                                </button>
+                                                <button onClick={() => { setActiveUploadSlot('left'); fileInputRef.current.click(); }} className="w-full border-2 border-dashed border-blue-400 py-4.5 rounded-xl text-blue-600 hover:bg-blue-50 font-black shadow-sm tracking-wide text-sm flex items-center justify-center gap-2 transition-all">
+                                                    📷 Wrap Photo 2 <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full ml-1 font-bold">(Left)</span>
+                                                </button>
+                                                <button onClick={() => { setActiveUploadSlot('right'); fileInputRef.current.click(); }} className="w-full border-2 border-dashed border-teal-400 py-4.5 rounded-xl text-teal-600 hover:bg-teal-50 font-black shadow-sm tracking-wide text-sm flex items-center justify-center gap-2 transition-all">
+                                                    📷 Wrap Photo 3 <span className="text-[10px] bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full ml-1 font-bold">(Right)</span>
+                                                </button>
+                                                <p className="text-[11px] text-gray-500 font-semibold text-center">
+                                                    1, 2 ya 3 photos upload karo — preview me front, left aur right views automatically dikhengi.
+                                                </p>
+                                            </>
+                                        )}
+
+                                        <div className="relative flex py-2 items-center">
+                                            <div className="flex-grow border-t border-gray-200"></div>
+                                            <span className="flex-shrink-0 mx-4 text-gray-400 text-xs font-black tracking-widest uppercase">Or</span>
+                                            <div className="flex-grow border-t border-gray-200"></div>
+                                        </div>
+
+                                        <button onClick={() => setActiveTab('text')} className="w-full bg-[#1e293b] text-white py-4 rounded-xl hover:bg-slate-700 font-black tracking-[0.1em] uppercase text-xs shadow-md transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5">
+                                            📝 Add Custom Text
+                                        </button>
+
                                         <input type="file" ref={fileInputRef} hidden onChange={handleImageUpload} />
                                     </div>
                                 )}
@@ -1000,31 +2084,74 @@ const CustomizeProduct = () => {
                                 {activeTab === 'emoji' && (
                                     <EmojiPicker onEmojiClick={(d) => addToCanvas(new fabric.IText(d.emoji, { fontSize: 50 }))} width="100%" height={350} />
                                 )}
-                                {activeTab === 'shapes' && (
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <button onClick={() => addToCanvas(new fabric.Rect({ width: 80, height: 80, fill: '#ff4444' }))} className="aspect-square bg-red-500 rounded-lg hover:opacity-80 transition-opacity"></button>
-                                        <button onClick={() => addToCanvas(new fabric.Circle({ radius: 40, fill: '#44ff44' }))} className="aspect-square bg-green-500 rounded-full hover:opacity-80 transition-opacity"></button>
-                                        <button onClick={() => addToCanvas(new fabric.Triangle({ width: 80, height: 80, fill: '#4444ff' }))} className="aspect-square bg-blue-500 hover:opacity-80 transition-opacity" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }}></button>
-                                    </div>
-                                )}
                                 {selectedObject && (
-                                    <div className="mt-6 p-5 bg-slate-50 border border-slate-100 rounded-2xl shadow-sm">
-                                        <p className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-[0.2em]">Layer Controls</p>
+                                    <div className="mt-6 p-5 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Design Tools</p>
+
+                                        {selectedObject.role === 'clipped-image' && (
+                                            <div className="pb-4 border-b border-slate-100 italic">
+                                                <label className="flex justify-between items-center text-[10px] font-black text-indigo-600 uppercase mb-2">
+                                                    <span>Photo Zoom</span>
+                                                    <span>{Math.round((selectedObject.scaleX / (selectedObject.maskRef?.getScaledWidth() / selectedObject.width)) * 100)}%</span>
+                                                </label>
+                                                <input
+                                                    type="range"
+                                                    min="1"
+                                                    max="3"
+                                                    step="0.01"
+                                                    className="w-full account-slider accent-indigo-600"
+                                                    value={selectedObject.scaleX / (selectedObject.maskRef?.getScaledWidth() / selectedObject.width)}
+                                                    onChange={(e) => {
+                                                        const zoom = parseFloat(e.target.value);
+                                                        const mask = selectedObject.maskRef;
+                                                        const mW = mask.getScaledWidth();
+                                                        const mH = mask.getScaledHeight();
+                                                        const minScaleX = mW / selectedObject.width;
+                                                        const minScaleY = mH / selectedObject.height;
+                                                        const minScale = Math.max(minScaleX, minScaleY);
+                                                        const newScale = minScale * zoom;
+
+                                                        selectedObject.set({ scaleX: newScale, scaleY: newScale });
+                                                        // Trigger constraint logic to keep it centered if needed
+                                                        handleImageTransformation({ target: selectedObject });
+                                                        canvas.renderAll();
+                                                    }}
+                                                />
+                                                <p className="text-[9px] text-slate-400 mt-2">
+                                                    Tip: Zoom in to move the photo left or right.
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Fill with Image for Shape Placeholders */}
+                                        {selectedObject.role === 'shape-placeholder' && (
+                                            <button
+                                                onClick={() => {
+                                                    // Mark the selected object as the target for the next upload
+                                                    canvas.activePlaceholder = selectedObject;
+                                                    fileInputRef.current.click();
+                                                }}
+                                                className="w-full py-3 bg-indigo-600 text-white text-[11px] font-[900] uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 mb-2"
+                                            >
+                                                📷 Fill with Photo
+                                            </button>
+                                        )}
+
                                         <div className="grid grid-cols-3 gap-2">
-                                            <button 
-                                                onClick={() => { canvas.bringToFront(selectedObject); if (canvas.overlayImage) canvas.bringToFront(canvas.overlayImage); canvas.renderAll(); }} 
+                                            <button
+                                                onClick={() => { canvas.bringToFront(selectedObject); if (canvas.overlayImage) canvas.bringToFront(canvas.overlayImage); canvas.renderAll(); }}
                                                 className="p-2.5 bg-white text-[10px] font-black uppercase text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-100 transition-all"
                                             >
                                                 Front
                                             </button>
-                                            <button 
-                                                onClick={() => { canvas.sendToBack(selectedObject); if (canvas.productImage) canvas.sendToBack(canvas.productImage); canvas.renderAll(); }} 
+                                            <button
+                                                onClick={() => { canvas.sendToBack(selectedObject); if (canvas.productImage) canvas.sendToBack(canvas.productImage); canvas.renderAll(); }}
                                                 className="p-2.5 bg-white text-[10px] font-black uppercase text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-100 transition-all"
                                             >
                                                 Back
                                             </button>
-                                            <button 
-                                                onClick={() => { canvas.remove(selectedObject); setSelectedObject(null); canvas.renderAll(); }} 
+                                            <button
+                                                onClick={() => { canvas.remove(selectedObject); setSelectedObject(null); canvas.renderAll(); }}
                                                 className="p-2.5 bg-red-50 text-[10px] font-black uppercase text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-all"
                                             >
                                                 Remove
@@ -1039,7 +2166,7 @@ const CustomizeProduct = () => {
                                 <div className="flex items-center justify-between bg-slate-50/80 p-5 rounded-2xl border border-slate-100/50">
                                     <span className="text-[11px] font-[900] text-slate-400 uppercase tracking-widest leading-none">Quantity</span>
                                     <div className="flex items-center gap-5 bg-white rounded-xl shadow-sm p-1.5 border border-slate-100">
-                                        <button 
+                                        <button
                                             onClick={() => setQuantity(q => Math.max(1, q - 1))}
                                             className="w-10 h-10 flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-800 rounded-lg disabled:opacity-30"
                                             disabled={quantity <= (template.moq || 1)}
@@ -1047,7 +2174,7 @@ const CustomizeProduct = () => {
                                             <FaMinus size={12} />
                                         </button>
                                         <span className="w-8 text-center font-[900] text-slate-900 text-[18px]">{quantity}</span>
-                                        <button 
+                                        <button
                                             onClick={() => setQuantity(q => q + 1)}
                                             className="w-10 h-10 flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-800 rounded-lg"
                                         >
@@ -1097,9 +2224,9 @@ const CustomizeProduct = () => {
                                         disabled={!!loadingAction}
                                         onClick={() => {
                                             if (canvas) {
-                                               handleAddToCart(true); 
+                                                handleAddToCart(true);
                                             } else {
-                                               navigate(`/checkout?id=${template._id}`);
+                                                navigate(`/checkout?id=${template._id}`);
                                             }
                                         }}
                                         className="h-[68px] font-black transition-all hover:-translate-y-1 active:scale-[0.98] shadow-2xl shadow-green-100"
@@ -1120,7 +2247,3 @@ const CustomizeProduct = () => {
 };
 
 export default CustomizeProduct;
-
-
-
-

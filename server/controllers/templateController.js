@@ -27,7 +27,11 @@ const createTemplate = async (req, res) => {
             shippingCharges,
             description,
             uses,
-            benefits
+            benefits,
+            galleryImages,
+            gst,
+            wrapType,
+            mockupViews
         } = req.body;
 
         const template = await Template.create({
@@ -53,6 +57,10 @@ const createTemplate = async (req, res) => {
             description: description || '',
             uses: uses || [],
             benefits: benefits || [],
+            galleryImages: galleryImages || [],
+            gst: gst || 0,
+            wrapType: wrapType || 'none',
+            mockupViews: mockupViews || [],
             createdBy: req.user?._id
         });
 
@@ -130,7 +138,11 @@ const updateTemplate = async (req, res) => {
             shippingCharges,
             description,
             uses,
-            benefits
+            benefits,
+            galleryImages,
+            gst,
+            wrapType,
+            mockupViews
         } = req.body;
 
         const updatedTemplate = await Template.findByIdAndUpdate(
@@ -157,7 +169,11 @@ const updateTemplate = async (req, res) => {
                 shippingCharges,
                 description,
                 uses,
-                benefits
+                benefits,
+                galleryImages,
+                gst,
+                wrapType,
+                mockupViews
             },
             { new: true, runValidators: true }
         );

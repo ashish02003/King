@@ -58,6 +58,8 @@ const cartItemSchema = new mongoose.Schema({
     }],
     finalDesignUrl: String,
     canvasJSON: Object,
+    slotAssets: Object,
+    userUploadedImages: [String],
     quantity: {
         type: Number,
         required: true,

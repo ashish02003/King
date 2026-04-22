@@ -15,6 +15,7 @@ const userResponse = (user) => ({
     email: user.email,
     role: user.role,
     avatar: user.avatar || '',
+    shippingAddress: user.shippingAddress || {},
     token: generateToken(user._id)
 });
 
@@ -117,13 +118,21 @@ const changePassword = async (req, res) => {
 // @route   PUT /api/auth/profile
 // @access  Private
 const updateProfile = async (req, res) => {
-    const { name, email } = req.body;
+    const { name, email, shippingAddress } = req.body;
     try {
         const user = await User.findById(req.user._id);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         if (name) user.name = name;
         if (email) user.email = email;
+        
+        if (shippingAddress) {
+            user.shippingAddress = {
+                ...user.shippingAddress,
+                ...shippingAddress
+            };
+        }
+
         await user.save();
 
         res.json(userResponse(user));

@@ -9,7 +9,7 @@ const Logo = ({ className = "" }) => {
         alt="PrintShoppy Logo"
         className="h-6 md:h-8 w-auto object-contain transition-all"
       />
-      <span className="text-xl font-black bg-gradient-to-r from-luxury-blue-dark to-luxury-gold bg-clip-text text-transparent hidden sm:block tracking-tight">
+      <span className="text-xl font-black text-shimmer hidden sm:block tracking-tight">
         Mimitiinaa
       </span>
     </div>
