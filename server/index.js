@@ -12,13 +12,27 @@ if (!process.env.MONGO_URI) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 const path = require('path');
-const domain = 'https://ashishproject.vercel.app';
+// const domain = 'https://ashishproject.vercel.app';
 
 // Middleware
+// app.use(cors({
+//     origin: [domain, 'http://localhost:5173', 'http://localhost:3000','http://localhost:5174'],
+//     credentials: true
+// }));
+
+const allowedOrigins = [
+    'https://ashishproject.vercel.app',
+    'https://admin-mimittinaa.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000'
+];
+
 app.use(cors({
-    origin: [domain, 'http://localhost:5173', 'http://localhost:3000','http://localhost:5174'],
+    origin: allowedOrigins,
     credentials: true
 }));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
