@@ -22,6 +22,7 @@ const path = require('path');
 
 const allowedOrigins = [
     'https://ashishproject.vercel.app',
+    'https://mimtinaa.vercel.app',
     'https://admin-mimittinaa.vercel.app',
     'http://localhost:5173',
     'http://localhost:5174',
