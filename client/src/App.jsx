@@ -6,7 +6,7 @@ import Register from './pages/Register';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import CustomizeProduct from './pages/CustomizeProduct';
-import AdminLogin from '../../admin/src/components/AdminLogin';
+// import AdminLogin from '../../admin/src/components/AdminLogin';
 
 import Profile from './pages/Profile';
 import Cart from './pages/Cart';
