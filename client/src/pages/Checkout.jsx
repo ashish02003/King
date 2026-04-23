@@ -270,15 +270,15 @@ const Checkout = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50/50 py-10 px-4">
+        <div className="min-h-screen py-10 px-4" style={{ background: '#1A0F2E' }}>
             <div className="max-w-6xl mx-auto">
                 <div className="flex items-center gap-4 mb-8">
-                    <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-2xl border-2 border-gray-200 bg-white shadow-sm">
-                        <FaArrowLeft className="text-gray-500" />
+                    <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-2xl border-2 border-luxury-purple/40 bg-luxury-purple/20 shadow-sm">
+                        <FaArrowLeft className="text-luxury-purple-light" />
                     </button>
                     <div>
-                        <h1 className="text-3xl font-black text-gray-900 tracking-tight">Checkout</h1>
-                        <p className="text-sm text-gray-400 font-medium">Industry Standard Secure Checkout</p>
+                        <h1 className="text-3xl font-black text-white tracking-tight">Checkout</h1>
+                        <p className="text-sm font-medium" style={{ color: '#A189CC' }}>Industry Standard Secure Checkout</p>
                     </div>
                 </div>
 
@@ -297,7 +297,7 @@ const Checkout = () => {
 
                         {/* Step 1: Address Form */}
                         {step === 1 && (
-                            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="rounded-3xl shadow-sm overflow-hidden" style={{ background: '#2D1B4E', border: '1px solid rgba(161,137,204,0.2)' }}>
                                 <div className="p-8 grid grid-cols-1 sm:grid-cols-2 gap-5">
                                     <Field label="Full Name" name="fullName" value={address.fullName} onChange={handleChange} error={errors.fullName} placeholder="Your Name" />
                                     <Field label="Phone" name="phone" value={address.phone} onChange={handleChange} error={errors.phone} type="tel" placeholder="10-digit mobile" maxLength={10} />
@@ -312,7 +312,7 @@ const Checkout = () => {
                                     <Field label="Pincode" name="pincode" value={address.pincode} onChange={handleChange} error={errors.pincode} maxLength={6} />
                                 </div>
                                 <div className="px-8 pb-8 space-y-4">
-                                    <label className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 cursor-pointer group hover:bg-white hover:border-indigo-200 transition-all">
+                                    <label className="flex items-center gap-3 p-4 rounded-2xl border cursor-pointer group hover:bg-luxury-purple/20 hover:border-luxury-purple transition-all" style={{ background: 'rgba(161,137,204,0.1)', border: '1px solid rgba(161,137,204,0.2)' }}>
                                         <input
                                             type="checkbox"
                                             checked={saveAddress}
@@ -356,7 +356,7 @@ const Checkout = () => {
                         {step === 2 && (
                             <div className="space-y-5">
                                 {/* Address summary */}
-                                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                                <div className="rounded-3xl shadow-sm overflow-hidden" style={{ background: '#2D1B4E', border: '1px solid rgba(161,137,204,0.2)' }}>
                                     <div className="p-6">
                                         <div className="flex items-center justify-between mb-4">
                                             <h3 className="font-black text-gray-900 uppercase text-xs tracking-widest flex items-center gap-2">
@@ -364,7 +364,7 @@ const Checkout = () => {
                                             </h3>
                                             <button onClick={() => setStep(1)} className="text-xs font-black text-indigo-600 underline">Change</button>
                                         </div>
-                                        <div className="bg-slate-50 p-4 rounded-2xl space-y-2">
+                                        <div className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(161,137,204,0.1)', border: '1px solid rgba(161,137,204,0.2)' }}>
                                             <div className="flex items-center gap-3">
                                                 <FaUser className="text-slate-400 text-xs" />
                                                 <p className="font-black text-slate-800">{address.fullName} <span className="text-slate-400 font-bold ml-2">| +91 {address.phone}</span></p>
@@ -381,7 +381,7 @@ const Checkout = () => {
                                 </div>
 
                                 {/* Payment Method Selection */}
-                                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                                <div className="rounded-3xl shadow-sm overflow-hidden" style={{ background: '#2D1B4E', border: '1px solid rgba(161,137,204,0.2)' }}>
                                     <div className="p-6 border-b border-gray-50">
                                         <h3 className="font-black text-gray-900 uppercase text-xs tracking-widest flex items-center gap-2">
                                             <FaCreditCard className="text-indigo-500" /> Select Payment Method
@@ -460,9 +460,9 @@ const Checkout = () => {
 
                     {/* RIGHT COLUMN: Order Summary */}
                     <div className="lg:col-span-1">
-                        <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden sticky top-10">
+                        <div className="rounded-[2.5rem] shadow-xl overflow-hidden sticky top-10" style={{ background: '#2D1B4E', border: '1px solid rgba(161,137,204,0.2)' }}>
                             {/* Summary Header */}
-                            <div className="p-8 border-b border-slate-100 bg-slate-50/50">
+                            <div className="p-8 border-b border-luxury-purple/30" style={{ background: 'rgba(161,137,204,0.05)' }}>
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg">
                                         <FaShoppingBag className="text-white" />
@@ -475,7 +475,7 @@ const Checkout = () => {
                             </div>
 
                             {/* Item List */}
-                            <div className="p-6 space-y-4 max-h-[300px] overflow-y-auto bg-white">
+                            <div className="p-6 space-y-4 max-h-[300px] overflow-y-auto" style={{ background: '#2D1B4E' }}>
                                 {selectedItems.map((item, i) => {
                                     return (
                                         <div key={i} className="flex gap-4 p-4 rounded-3xl bg-slate-50/50 border border-slate-100 items-start">
@@ -500,7 +500,7 @@ const Checkout = () => {
                             </div>
 
                             {/* Breakdown Footer */}
-                            <div className="p-8 bg-slate-50/30 border-t border-slate-100 space-y-4">
+                            <div className="p-8 border-t border-luxury-purple/30 space-y-4" style={{ background: 'rgba(161,137,204,0.05)' }}>
                                 <div className="flex justify-between items-center text-[12px] font-bold text-slate-500 uppercase tracking-widest">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 text-[10px] shadow-sm">

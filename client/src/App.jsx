@@ -29,21 +29,21 @@ const LogoutModal = ({ isOpen, onConfirm, onCancel }) => {
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
-            <div className="relative bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full animate-fadeIn text-center">
-                <button onClick={onCancel} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100">
-                    <FaTimes className="text-gray-400 text-sm" />
+            <div className="relative bg-luxury-purple-dark rounded-3xl shadow-2xl p-8 max-w-sm w-full animate-fadeIn text-center">
+                <button onClick={onCancel} className="absolute top-4 right-4 p-2 rounded-full hover:bg-luxury-purple/30">
+                    <FaTimes className="text-luxury-purple-light text-sm" />
                 </button>
                 <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-5">
                     <FaSignOutAlt size={24} className="text-red-500" />
                 </div>
-                <h3 className="text-2xl font-black text-gray-900 mb-2">Logout?</h3>
-                <p className="text-gray-500 font-medium mb-8">
+                <h3 className="text-2xl font-black text-white mb-2">Logout?</h3>
+                <p className="text-luxury-purple-light font-medium mb-8">
                     Are you sure you want to end your session? You'll need to log in again to access your account.
                 </p>
                 <div className="flex gap-3">
                     <button
                         onClick={onCancel}
-                        className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-colors"
+                        className="flex-1 py-3.5 rounded-2xl border-2 border-luxury-purple font-bold text-luxury-purple-light hover:bg-luxury-purple/20 transition-colors"
                     >
                         Stay In
                     </button>
@@ -114,7 +114,7 @@ const Navigation = () => {
                 onCancel={() => setShowLogoutModal(false)}
             />
             <header className={`w-full sticky top-0 z-[9999] transition-all duration-700 font-sans ${scrolled
-                ? 'bg-white/95 backdrop-blur-2xl shadow-[0_8px_32px_rgba(66,45,107,0.12)] py-1.5 border-b-2 border-luxury-purple/30'
+                ? 'bg-luxury-purple-dark/95 backdrop-blur-2xl shadow-[0_8px_32px_rgba(66,45,107,0.4)] py-1.5 border-b-2 border-luxury-purple/50'
                 : 'bg-transparent py-5 border-b border-white/5'
                 }`}>
                 <nav className="max-w-7xl mx-auto px-6 h-12 md:h-16 flex items-center justify-between">
@@ -125,22 +125,22 @@ const Navigation = () => {
 
                     {/* Middle: Desktop Nav Links */}
                     <div className="hidden lg:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
-                        <Link to="/" onClick={handleHomeClick} className="text-[13px] font-[900] text-luxury-purple hover:text-luxury-purple-dark transition-colors uppercase tracking-[0.15em] relative group">
+                        <Link to="/" onClick={handleHomeClick} className="text-[13px] font-[900] text-white hover:text-luxury-purple-light transition-colors uppercase tracking-[0.15em] relative group">
                             Home
-                            <span className="absolute -bottom-1 w-full h-[3px] bg-luxury-purple scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                            <span className="absolute -bottom-1 w-full h-[3px] bg-luxury-purple-light scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
                         </Link>
                         <Link 
                             to="/#designs" 
                             onClick={handleDesignsClick}
-                            className="text-[13px] font-[900] text-luxury-purple hover:text-luxury-purple-dark transition-colors uppercase tracking-[0.15em] relative group"
+                            className="text-[13px] font-[900] text-white hover:text-luxury-purple-light transition-colors uppercase tracking-[0.15em] relative group"
                         >
                             Designs
-                            <span className="absolute -bottom-1 w-full h-[3px] bg-luxury-purple scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                            <span className="absolute -bottom-1 w-full h-[3px] bg-luxury-purple-light scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
                         </Link>
                         {user && user.role === 'admin' && (
-                            <Link to="/admin" className="text-[13px] font-[900] text-luxury-purple hover:text-luxury-purple-dark transition-colors uppercase tracking-[0.15em] relative group">
+                            <Link to="/admin" className="text-[13px] font-[900] text-white hover:text-luxury-purple-light transition-colors uppercase tracking-[0.15em] relative group">
                                 Admin
-                                <span className="absolute -bottom-1 w-full h-[3px] bg-luxury-purple scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                                <span className="absolute -bottom-1 w-full h-[3px] bg-luxury-purple-light scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
                             </Link>
                         )}
                     </div>
@@ -149,7 +149,7 @@ const Navigation = () => {
                     <div className="flex items-center gap-3">
                         {/* Cart */}
                         {(!user || user.role !== 'admin') && (
-                            <Link to="/cart" className="relative p-2.5 rounded-full hover:bg-luxury-purple/10 transition-all text-[#422d6b] hover:text-luxury-purple active:scale-90">
+                            <Link to="/cart" className="relative p-2.5 rounded-full hover:bg-white/10 transition-all text-white hover:text-luxury-purple-light active:scale-90">
                                 <FaShoppingCart size={20} />
                                 {cartItems.length > 0 && (
                                     <span className="absolute top-1 right-1 bg-luxury-purple text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full ring-[3px] ring-white">
@@ -164,7 +164,7 @@ const Navigation = () => {
                             <div className="relative">
                                 <button
                                     onClick={() => setIsProfileOpen(!isProfileOpen)}
-                                    className="flex items-center gap-2 p-1 pl-2 pr-1 rounded-full border border-luxury-purple/20 hover:border-luxury-purple/40 hover:bg-luxury-purple/5 transition-all active:scale-95 bg-white shadow-sm"
+                                    className="flex items-center gap-2 p-1 pl-2 pr-1 rounded-full border border-white/30 hover:border-white/60 hover:bg-white/10 transition-all active:scale-95 bg-white/10 shadow-sm"
                                 >
                                     <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-luxury-purple/5 flex-shrink-0">
                                         {user.avatar ? (
@@ -182,29 +182,29 @@ const Navigation = () => {
                                 {isProfileOpen && (
                                     <>
                                         <div className="fixed inset-0 z-[9998]" onClick={() => setIsProfileOpen(false)} />
-                                        <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-[0_20px_50px_rgba(86,60,140,0.15)] border border-luxury-purple/10 py-3 z-[9999] animate-fadeIn">
-                                            <div className="px-5 py-4 border-b border-luxury-purple/5">
-                                                <p className="text-[10px] font-black text-luxury-purple/40 uppercase tracking-widest mb-1 leading-none">Account</p>
-                                                <p className="text-[15px] font-[900] text-luxury-purple-dark truncate leading-none mb-1">{user.name}</p>
-                                                <p className="text-xs text-luxury-purple/60 font-medium truncate">{user.email}</p>
+                                        <div className="absolute right-0 mt-3 w-64 bg-luxury-purple-dark rounded-2xl shadow-[0_20px_50px_rgba(20,5,40,0.5)] border border-luxury-purple/40 py-3 z-[9999] animate-fadeIn">
+                                            <div className="px-5 py-4 border-b border-luxury-purple/40">
+                                                <p className="text-[10px] font-black text-luxury-purple-light/60 uppercase tracking-widest mb-1 leading-none">Account</p>
+                                                <p className="text-[15px] font-[900] text-white truncate leading-none mb-1">{user.name}</p>
+                                                <p className="text-xs text-luxury-purple-light font-medium truncate">{user.email}</p>
                                             </div>
 
                                             <div className="py-2">
                                                 <Link
                                                     to="/profile"
                                                     onClick={() => setIsProfileOpen(false)}
-                                                    className="flex items-center gap-3 px-5 py-3 text-[13px] font-bold text-luxury-purple hover:bg-luxury-purple/5 transition-all"
+                                                    className="flex items-center gap-3 px-5 py-3 text-[13px] font-bold text-luxury-purple-light hover:bg-luxury-purple/30 transition-all"
                                                 >
                                                     <FaUserCircle size={16} />
                                                     Personal Profile
                                                 </Link>
 
                                                 {user.role === 'admin' && (
-                                                    <div className="border-t border-slate-50 my-1 pt-1">
+                                                    <div className="border-t border-luxury-purple/30 my-1 pt-1">
                                                         <Link
                                                             to="/admin/orders"
                                                             onClick={() => setIsProfileOpen(false)}
-                                                            className="flex items-center gap-3 px-5 py-3 text-[13px] font-bold text-luxury-purple hover:bg-luxury-purple/5 transition-all"
+                                                            className="flex items-center gap-3 px-5 py-3 text-[13px] font-bold text-luxury-purple-light hover:bg-luxury-purple/30 transition-all"
                                                         >
                                                             <FaShoppingCart size={16} />
                                                             Order Management
@@ -212,7 +212,7 @@ const Navigation = () => {
                                                         <Link
                                                             to="/admin/users"
                                                             onClick={() => setIsProfileOpen(false)}
-                                                            className="flex items-center gap-3 px-5 py-3 text-[13px] font-bold text-luxury-purple hover:bg-luxury-purple/5 transition-all"
+                                                            className="flex items-center gap-3 px-5 py-3 text-[13px] font-bold text-luxury-purple-light hover:bg-luxury-purple/30 transition-all"
                                                         >
                                                             <FaUser size={16} />
                                                             User Directory
@@ -224,21 +224,21 @@ const Navigation = () => {
                                                     <Link
                                                         to="/cart"
                                                         onClick={() => setIsProfileOpen(false)}
-                                                        className="flex items-center gap-3 px-5 py-3 text-[13px] font-bold text-luxury-purple hover:bg-luxury-purple/5 transition-all"
+                                                        className="flex items-center gap-3 px-5 py-3 text-[13px] font-bold text-luxury-purple-light hover:bg-luxury-purple/30 transition-all"
                                                     >
                                                         <FaShoppingCart size={16} />
                                                         Shopping Cart
                                                         {cartItems.length > 0 && (
-                                                            <span className="ml-auto bg-luxury-purple/10 text-luxury-purple text-[10px] font-black px-2 py-0.5 rounded-full">{cartItems.length}</span>
+                                                            <span className="ml-auto bg-luxury-purple text-white text-[10px] font-black px-2 py-0.5 rounded-full">{cartItems.length}</span>
                                                         )}
                                                     </Link>
                                                 )}
                                             </div>
 
-                                            <div className="border-t border-slate-50 pt-2 px-2">
+                                            <div className="border-t border-luxury-purple/30 pt-2 px-2">
                                                 <button
                                                     onClick={handleLogoutClick}
-                                                    className="w-full flex items-center gap-3 px-3 py-3 text-[13px] font-black text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                    className="w-full flex items-center gap-3 px-3 py-3 text-[13px] font-black text-red-400 hover:bg-red-900/20 rounded-xl transition-all"
                                                 >
                                                     <FaSignOutAlt size={16} />
                                                     Sign Out
@@ -265,7 +265,7 @@ function App() {
         <AuthProvider>
             <CartProvider>
                 <Router>
-                    <div className="min-h-screen bg-luxury-cream font-sans text-luxury-purple-dark">
+                    <div className="min-h-screen font-sans" style={{ background: '#1A0F2E', color: '#E8E0F0' }}>
                         <Toaster 
                             position="top-center" 
                             reverseOrder={false} 

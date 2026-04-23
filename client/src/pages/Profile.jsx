@@ -132,27 +132,27 @@ const AvatarSection = ({ user, onUpload, onDelete }) => {
             {showDeleteConfirm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
-                    <div className="relative bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full animate-fadeIn text-center">
-                        <button onClick={() => setShowDeleteConfirm(false)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100">
-                            <FaTimes className="text-gray-400 text-sm" />
+                    <div className="relative bg-luxury-purple-dark rounded-3xl shadow-2xl p-8 max-w-sm w-full animate-fadeIn text-center">
+                        <button onClick={() => setShowDeleteConfirm(false)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-luxury-purple/30">
+                            <FaTimes className="text-luxury-purple-light text-sm" />
                         </button>
-                        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-5">
-                            <FaTrash size={22} className="text-red-500" />
+                        <div className="w-16 h-16 bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-5">
+                            <FaTrash size={22} className="text-red-400" />
                         </div>
-                        <h3 className="text-xl font-black text-gray-900 mb-2">Remove Photo?</h3>
-                        <p className="text-gray-500 font-medium text-sm mb-8">
+                        <h3 className="text-xl font-black text-white mb-2">Remove Photo?</h3>
+                        <p className="text-luxury-purple-light font-medium text-sm mb-8">
                             Are you sure you want to remove your profile photo? Your avatar will be replaced with default initials.
                         </p>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setShowDeleteConfirm(false)}
-                                className="flex-1 py-3 rounded-2xl border-2 border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-colors text-sm"
+                                className="flex-1 py-3 rounded-2xl border-2 border-luxury-purple font-bold text-luxury-purple-light hover:bg-luxury-purple/20 transition-colors text-sm"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleDelete}
-                                className="flex-1 py-3 rounded-2xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-200 text-sm"
+                                className="flex-1 py-3 rounded-2xl bg-red-700 text-white font-bold hover:bg-red-800 transition-colors shadow-lg shadow-red-900/30 text-sm"
                             >
                                 Yes, Remove
                             </button>
@@ -196,46 +196,46 @@ const EditProfileModal = ({ isOpen, onClose, user, onSave }) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-fadeIn">
-                <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors">
-                    <FaTimes className="text-gray-400" />
+            <div className="relative bg-luxury-purple-dark rounded-3xl shadow-2xl w-full max-w-md p-8 animate-fadeIn">
+                <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full hover:bg-luxury-purple/30 transition-colors">
+                    <FaTimes className="text-luxury-purple-light" />
                 </button>
 
                 <div className="flex items-center gap-4 mb-8">
-                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
-                        <FaPencilAlt className="text-blue-600 text-lg" />
+                    <div className="w-12 h-12 bg-luxury-purple/40 rounded-2xl flex items-center justify-center">
+                        <FaPencilAlt className="text-luxury-purple-light text-lg" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-black text-gray-900">Edit Profile</h2>
-                        <p className="text-sm text-gray-400 font-medium">Update your account details</p>
+                        <h2 className="text-xl font-black text-white">Edit Profile</h2>
+                        <p className="text-sm text-luxury-purple-light font-medium">Update your account details</p>
                     </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div>
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Full Name</label>
+                        <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-2">Full Name</label>
                         <div className="relative">
-                            <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 text-sm" />
+                            <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-luxury-purple-light/40 text-sm" />
                             <input
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 placeholder="Your full name"
-                                className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl font-bold text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                className="w-full pl-11 pr-4 py-3.5 bg-luxury-purple/30 border border-luxury-purple/40 rounded-2xl font-bold text-white text-sm focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent transition-all placeholder-luxury-purple-light/30"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Email Address</label>
+                        <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-2">Email Address</label>
                         <div className="relative">
-                            <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 text-sm" />
+                            <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-luxury-purple-light/40 text-sm" />
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="your@email.com"
-                                className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl font-bold text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                className="w-full pl-11 pr-4 py-3.5 bg-luxury-purple/30 border border-luxury-purple/40 rounded-2xl font-bold text-white text-sm focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent transition-all placeholder-luxury-purple-light/30"
                             />
                         </div>
                     </div>
@@ -244,14 +244,14 @@ const EditProfileModal = ({ isOpen, onClose, user, onSave }) => {
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-colors text-sm"
+                            className="flex-1 py-3.5 rounded-2xl border-2 border-luxury-purple font-bold text-luxury-purple-light hover:bg-luxury-purple/20 transition-colors text-sm"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={saving}
-                            className="flex-1 py-3.5 rounded-2xl bg-blue-600 text-white font-black hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="flex-1 py-3.5 rounded-2xl bg-luxury-purple text-white font-black hover:bg-luxury-purple-dark transition-colors shadow-lg shadow-luxury-purple/30 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             {saving ? 'Saving...' : 'Save Changes'}
                         </button>
@@ -268,27 +268,27 @@ const LogoutModal = ({ isOpen, onConfirm, onCancel }) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
-            <div className="relative bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full animate-fadeIn text-center">
-                <button onClick={onCancel} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100">
-                    <FaTimes className="text-gray-400 text-sm" />
+            <div className="relative bg-luxury-purple-dark rounded-3xl shadow-2xl p-8 max-w-sm w-full animate-fadeIn text-center">
+                <button onClick={onCancel} className="absolute top-4 right-4 p-2 rounded-full hover:bg-luxury-purple/30">
+                    <FaTimes className="text-luxury-purple-light text-sm" />
                 </button>
-                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-5">
-                    <FaSignOutAlt size={24} className="text-red-500" />
+                <div className="w-16 h-16 bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-5">
+                    <FaSignOutAlt size={24} className="text-red-400" />
                 </div>
-                <h3 className="text-2xl font-black text-gray-900 mb-2">Logout?</h3>
-                <p className="text-gray-500 font-medium mb-8">
+                <h3 className="text-2xl font-black text-white mb-2">Logout?</h3>
+                <p className="text-luxury-purple-light font-medium mb-8">
                     Are you sure you want to end your session? You'll need to log in again to access your account.
                 </p>
                 <div className="flex gap-3">
                     <button
                         onClick={onCancel}
-                        className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-colors"
+                        className="flex-1 py-3.5 rounded-2xl border-2 border-luxury-purple font-bold text-luxury-purple-light hover:bg-luxury-purple/20 transition-colors"
                     >
                         Stay In
                     </button>
                     <button
                         onClick={onConfirm}
-                        className="flex-1 py-3.5 rounded-2xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
+                        className="flex-1 py-3.5 rounded-2xl bg-red-700 text-white font-bold hover:bg-red-800 transition-colors shadow-lg shadow-red-900/30"
                     >
                         Yes, Logout
                     </button>
@@ -301,15 +301,15 @@ const LogoutModal = ({ isOpen, onConfirm, onCancel }) => {
 // ─── Password Field ────────────────────────────────────────────────────────
 const PasswordField = ({ label, value, onChange, show, onToggle, placeholder }) => (
     <div>
-        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-2">{label}</label>
+        <label className="text-[10px] font-black text-black uppercase tracking-[0.2em] block mb-2">{label}</label>
         <div className="relative">
-            <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 text-sm" />
+            <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
             <input
                 type={show ? 'text' : 'password'}
                 value={value}
                 onChange={onChange}
                 placeholder={placeholder}
-                className="w-full pl-11 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl font-semibold text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full pl-11 pr-12 py-3.5 bg-luxury-purple/30 border border-luxury-purple/40 rounded-2xl font-semibold text-black text-sm focus:outline-none focus:ring-2 focus:ring-luxury-purple focus:border-transparent transition-all placeholder-gray-400"
             />
             <button
                 type="button"
@@ -448,7 +448,7 @@ const Profile = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 py-6 sm:py-12">
+        <div className="min-h-screen bg-luxury-purple-dark py-6 sm:py-12">
             {/* Modals */}
             <EditProfileModal
                 isOpen={showEditModal}
@@ -466,15 +466,15 @@ const Profile = () => {
                 {/* ── Page Header ── */}
                 <div className="mb-6 sm:mb-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                     <div>
-                        <p className="text-xs font-black text-blue-600 uppercase tracking-widest mb-1">Welcome back</p>
-                        <h1 className="text-2xl sm:text-4xl font-black text-gray-900 tracking-tight leading-none">
+                        <p className="text-xs font-black text- uppercase tracking-widest mb-1">Welcome back</p>
+                        <h1 className="text-2xl sm:text-4xl font-black text-gray-200 tracking-tight leading-none">
                             {user?.name?.split(' ')[0]}'s Dashboard
                         </h1>
                         <p className="text-gray-400 font-medium mt-1 sm:mt-2 text-sm">Manage your profile, track orders and keep your account secure.</p>
                     </div>
                     <button
                         onClick={() => setShowLogoutModal(true)}
-                        className="self-start sm:self-auto flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl bg-white text-red-500 font-bold border border-red-100 hover:bg-red-50 hover:border-red-200 transition-all shadow-sm group text-sm"
+                        className="self-start sm:self-auto flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl bg-luxury-purple/30 text-red-400 font-bold border border-luxury-purple/40 hover:bg-red-900/20 hover:border-red-400/30 transition-all shadow-sm group text-sm"
                     >
                         <FaSignOutAlt className="group-hover:translate-x-0.5 transition-transform" />
                         Logout
@@ -487,7 +487,7 @@ const Profile = () => {
                         {/* Mobile: horizontal scrollable tab bar */}
                         <div className="lg:hidden flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
                             {/* Mini profile chip */}
-                            <div className="flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2 flex items-center gap-2">
+                            <div className="flex-shrink-0 bg-luxury-purple/40 rounded-2xl border border-luxury-purple/30 shadow-sm px-3 py-2 flex items-center gap-2">
                                 <div className="w-8 h-8 rounded-xl overflow-hidden flex-shrink-0">
                                     {user?.avatar ? (
                                         <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
@@ -503,9 +503,9 @@ const Profile = () => {
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-2xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === tab.id
-                                            ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
-                                            : 'bg-white text-gray-500 border border-gray-100 hover:border-blue-200'
+                                    className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-md font-bold text-sm transition-all whitespace-nowrap ${activeTab === tab.id
+                                            ? 'bg-gray-200 text-luxury-purple-dark shadow-sm'
+                                            : 'bg-gray-100 text-gray-500 border border-gray-200 hover:border-gray-300'
                                         }`}
                                 >
                                     <span>{tab.icon}</span>
@@ -516,28 +516,28 @@ const Profile = () => {
 
                         {/* Desktop: vertical sidebar */}
                         <div className="hidden lg:block space-y-2">
-                            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 mb-4 flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0 shadow-lg shadow-blue-200">
+                            <div className="bg-gray-100 rounded-md border border-gray-200 shadow-sm p-5 mb-4 flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0 shadow-sm">
                                     {user?.avatar ? (
                                         <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
                                     ) : (
-                                        <div className="w-full h-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-black text-xl">
+                                        <div className="w-full h-full bg-gradient-to-tr from-gray-200 to-gray-300 flex items-center justify-center text-gray-600 font-black text-xl">
                                             {user?.name?.charAt(0).toUpperCase()}
                                         </div>
                                     )}
                                 </div>
                                 <div className="min-w-0">
                                     <p className="font-black text-gray-900 truncate text-sm">{user?.name}</p>
-                                    <p className="text-xs text-gray-400 font-medium truncate">{user?.email}</p>
+                                    <p className="text-xs text-gray-500 font-medium truncate">{user?.email}</p>
                                 </div>
                             </div>
                             {tabs.map(tab => (
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl font-bold transition-all text-left text-sm ${activeTab === tab.id
-                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-200/60 scale-[1.02]'
-                                            : 'bg-white text-gray-500 hover:bg-blue-50 hover:text-blue-600 border border-gray-100'
+                                    className={`w-full flex items-center gap-3 px-5 py-4 rounded-md font-bold transition-all text-left text-sm ${activeTab === tab.id
+                                            ? 'bg-gray-200 text-luxury-purple-dark shadow-sm scale-[1.02]'
+                                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-200'
                                         }`}
                                 >
                                     <span className="text-lg">{tab.icon}</span>
@@ -549,11 +549,11 @@ const Profile = () => {
 
                     {/* ── Content ── */}
                     <div className="lg:col-span-3">
-                        <div className="bg-white rounded-2xl sm:rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="bg-luxury-purple/30 rounded-2xl sm:rounded-[2rem] shadow-sm border border-luxury-purple/40 overflow-hidden">
 
                             {/* ── Account Info Tab ── */}
                             {activeTab === 'profile' && (
-                                <div className="p-5 sm:p-8 lg:p-10 animate-fadeIn">
+                                <div className="p-5 sm:p-8 lg:p-10 animate-fadeIn bg-gray-100 ">
                                     <div className="flex items-start sm:items-center justify-between mb-6 sm:mb-8 gap-3">
                                         <div>
                                             <h2 className="text-lg sm:text-2xl font-black text-gray-900">Account Information</h2>
@@ -578,7 +578,7 @@ const Profile = () => {
                                         {/* Info Grid */}
                                         <div className="flex-1 space-y-6">
                                             {/* Photo tip */}
-                                            <div className="bg-blue-50/60 rounded-2xl px-5 py-3 border border-blue-100 flex items-center gap-3">
+                                            <div className="bg-luxury-purple/20 rounded-2xl px-5 py-3 border border-luxury-purple/30 flex items-center gap-3">
                                                 <FaCamera className="text-blue-500 flex-shrink-0" />
                                                 <p className="text-xs text-blue-700 font-medium">
                                                     <strong>Tip:</strong> Hover over your photo to see upload & delete options. Supported formats: JPG, PNG, WebP (max 5MB).
@@ -586,22 +586,22 @@ const Profile = () => {
                                             </div>
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div className="bg-gray-50 rounded-2xl p-5">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-1">Full Name</label>
-                                                    <p className="text-xl font-black text-gray-900">{user?.name}</p>
+                                                <div className="bg-luxury-purple/20 rounded-2xl p-5 border border-luxury-purple/20">
+                                                    <label className="text-[10px] font-black text-black uppercase tracking-[0.2em] block mb-1">Full Name</label>
+                                                    <p className="text-xl font-black text-luxury-purple-dark">{user?.name}</p>
                                                 </div>
-                                                <div className="bg-gray-50 rounded-2xl p-5">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-1">Email Address</label>
-                                                    <p className="text-base font-bold text-gray-700 break-all">{user?.email}</p>
+                                                <div className="bg-luxury-purple/20 rounded-2xl p-5 border border-luxury-purple/20">
+                                                    <label className="text-[10px] font-black text-black uppercase tracking-[0.2em] block mb-1">Email Address</label>
+                                                    <p className="text-base font-bold text-luxury-purple-dark break-all">{user?.email}</p>
                                                 </div>
-                                                <div className="bg-gray-50 rounded-2xl p-5">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-1">Account Type</label>
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-black uppercase tracking-wider">
+                                                <div className="bg-luxury-purple/20 rounded-2xl p-5 border border-luxury-purple/20">
+                                                    <label className="text-[10px] font-black text-black uppercase tracking-[0.2em] block mb-1">Account Type</label>
+                                                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-luxury-purple/50 text-white text-xs font-black uppercase tracking-wider">
                                                         {user?.role}
                                                     </span>
                                                 </div>
-                                                <div className="bg-gray-50 rounded-2xl p-5">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-1">Account Status</label>
+                                                <div className="bg-luxury-purple/20 rounded-2xl p-5 border border-luxury-purple/20">
+                                                    <label className="text-[10px] font-black text-black uppercase tracking-[0.2em] block mb-1">Account Status</label>
                                                     <span className="inline-flex items-center gap-2 text-green-600 font-black text-sm">
                                                         <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></span>
                                                         Active & Verified
@@ -615,7 +615,7 @@ const Profile = () => {
 
                             {/* ── Order History Tab ── */}
                             {activeTab === 'orders' && (
-                                <div className="p-5 sm:p-8 lg:p-10 animate-fadeIn min-h-[400px] sm:min-h-[500px]">
+                                <div className="p-5 sm:p-8 lg:p-10 animate-fadeIn min-h-[400px] sm:min-h-[500px] bg-gray-200">
                                     <div className="flex items-center justify-between mb-6 sm:mb-8 gap-3">
                                         <div>
                                             <h2 className="text-lg sm:text-2xl font-black text-gray-900">Order History</h2>
@@ -648,9 +648,9 @@ const Profile = () => {
                                                 const addr = order.shippingAddress;
                                                 const orderShort = order._id.slice(-8).toUpperCase();
                                                 return (
-                                                    <div key={order._id} className="border border-gray-100 rounded-2xl sm:rounded-3xl hover:border-blue-200 hover:shadow-lg hover:shadow-blue-50 transition-all overflow-hidden">
+                                                    <div key={order._id} className="border border-luxury-purple/30 rounded-2xl sm:rounded-3xl hover:border-luxury-purple/60 hover:shadow-lg hover:shadow-luxury-purple/10 transition-all overflow-hidden">
                                                         {/* Order Header */}
-                                                        <div className="flex flex-wrap gap-2 sm:gap-3 justify-between items-center px-4 sm:px-6 py-3 sm:py-4 bg-gray-50/80 border-b border-gray-100">
+                                                        <div className="flex flex-wrap gap-2 sm:gap-3 justify-between items-center px-4 sm:px-6 py-3 sm:py-4 bg-luxury-purple/20 border-b border-luxury-purple/30">
                                                             <div className="flex items-center gap-3">
                                                                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow">
                                                                     <FaHistory size={12} className="text-white" />
@@ -709,7 +709,7 @@ const Profile = () => {
 
                                                             {/* Price Breakdown */}
                                                             {(order.subtotal != null) && (
-                                                                <div className="bg-gray-50 rounded-2xl p-4 mb-4 space-y-1.5 text-xs">
+                                                                <div className="bg-luxury-purple/20 rounded-2xl p-4 mb-4 space-y-1.5 text-xs border border-luxury-purple/20">
                                                                     <div className="flex justify-between"><span className="text-gray-500 font-medium flex items-center gap-1"><FaShoppingBag className="text-gray-400" /> Product Cost (Incl. GST)</span><span className="font-bold text-gray-800">₹{Math.round((order.subtotal || 0) + (order.gstTotal || 0)).toLocaleString()}</span></div>
                                                                     <div className="flex justify-between"><span className="text-gray-500 font-medium flex items-center gap-1"><FaBox className="text-gray-400" /> Packing Charges</span><span className={`font-bold ${order.packingChargesTotal > 0 ? 'text-gray-800' : 'text-gray-300'}`}>₹{order.packingChargesTotal || 0}</span></div>
                                                                     <div className="flex justify-between"><span className="text-gray-500 font-medium flex items-center gap-1"><FaTruck className="text-gray-400" /> Shipping Fee</span><span className={`font-bold ${order.shippingChargesTotal === 0 ? 'text-green-600' : 'text-gray-800'}`}>{order.shippingChargesTotal === 0 ? 'FREE' : `₹${order.shippingChargesTotal}`}</span></div>
@@ -798,14 +798,14 @@ const Profile = () => {
 
                             {/* ── Security Tab ── */}
                             {activeTab === 'security' && (
-                                <div className="p-5 sm:p-8 lg:p-10 animate-fadeIn">
+                                <div className="p-5 sm:p-8 lg:p-10 animate-fadeIn bg-gray-100">
                                     <div className="mb-6 sm:mb-8">
-                                        <h2 className="text-lg sm:text-2xl font-black text-gray-900">Security Settings</h2>
+                                        <h2 className="text-lg sm:text-2xl font-black text-gray-800">Security Settings</h2>
                                         <p className="text-gray-400 font-medium text-xs sm:text-sm mt-1">Keep your account safe with a strong password</p>
                                     </div>
 
                                     <div className="max-w-md">
-                                        <div className="flex items-center gap-4 p-5 bg-blue-50 rounded-2xl border border-blue-100 mb-8">
+                                        <div className="flex items-center gap-4 p-5 bg-luxury-purple/20 rounded-2xl border border-luxury-purple/30 mb-8">
                                             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow shadow-blue-200">
                                                 <FaShieldAlt className="text-white text-sm" />
                                             </div>
@@ -815,7 +815,7 @@ const Profile = () => {
                                             </div>
                                         </div>
 
-                                        <form onSubmit={handlePasswordChange} className="space-y-5">
+                                        <form onSubmit={handlePasswordChange} className="space-y-5 ">
                                             <PasswordField
                                                 label="Current Password"
                                                 value={currentPassword}

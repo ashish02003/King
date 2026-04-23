@@ -60,7 +60,7 @@ const Cart = () => {
     }
 
     return (
-        <Layout style={{ minHeight: '100vh', background: '#f8fafc' }}>
+        <Layout style={{ minHeight: '100vh', background: '#1A0F2E' }}>
             <Content style={{ padding: '40px 16px' }}>
                 <div className="container mx-auto max-w-6xl">
                     <Space align="center" size="large" style={{ marginBottom: 32 }}>
@@ -72,8 +72,8 @@ const Cart = () => {
                             className="shadow-sm border-gray-200"
                         />
                         <div>
-                            <h1 className="text-3xl font-black text-gray-900 tracking-tight m-0">Shopping Cart</h1>
-                            <Text type="secondary" className="font-medium">
+                            <h1 className="text-3xl font-black text-white tracking-tight m-0">Shopping Cart</h1>
+                            <Text style={{ color: '#A189CC', fontWeight: 500 }}>
                                 {selectedItems.length} of {cartItems.length} items selected for checkout
                             </Text>
                         </div>
@@ -254,32 +254,33 @@ const Cart = () => {
 
                             <Col xs={24} lg={8}>
                                 <Card
-                                    className="rounded-3xl border-gray-100 shadow-xl overflow-hidden sticky top-24"
-                                    title={<span className="font-black text-gray-800 uppercase tracking-widest text-xs">Order Summary</span>}
+                                    className="rounded-xl shadow-xl overflow-hidden sticky top-24 bg-gray-200"
+                                    style={{  border: '1px solid rgba(161,137,204,0.2)' }}
+                                    title={<span className="font-black text-luxury-purple-dark uppercase tracking-widest text-xs">Order Summary</span>}
                                 >
                                     <Space direction="vertical" style={{ width: '100%' }} size="large">
                                         <div className="space-y-4">
                                             <div className="flex justify-between items-center">
-                                                <div className="flex items-center gap-2 text-gray-500 font-medium">
-                                                    <FaShoppingBag size={14} className="text-gray-400" />
+                                                <div className="flex items-center gap-2 font-medium" style={{ color: '#453563ff' }}>
+                                                    <FaShoppingBag size={14} style={{ color: '#503582ff' }} />
                                                     Product Cost ({totalItems} items)
                                                 </div>
-                                                <Text strong className="text-gray-800">₹{Math.round(subtotal).toLocaleString()}</Text>
+                                                <Text strong style={{ color: '#121111ff' }}>₹{Math.round(subtotal).toLocaleString()}</Text>
                                             </div>
 
                                             <div className="flex justify-between items-center">
-                                                <div className="flex items-center gap-2 text-gray-500 font-medium">
-                                                    <FaBox size={14} className="text-gray-400" />
+                                                <div className="flex items-center gap-2 font-medium" style={{ color: '#54407aff' }}>
+                                                    <FaBox size={14} style={{ color: '#A189CC' }} />
                                                     Packing Charges
                                                 </div>
-                                                <Text strong className={packingChargesTotal > 0 ? 'text-gray-800' : 'text-gray-300'}>
+                                                <Text strong style={{ color: packingChargesTotal > 0 ? '#141414ff' : '#5a3a7a' }}>
                                                     ₹{packingChargesTotal.toLocaleString()}
                                                 </Text>
                                             </div>
 
                                             <div className="flex justify-between items-center">
-                                                <div className="flex items-center gap-2 text-gray-500 font-medium">
-                                                    <FaTruck size={14} className="text-gray-400" />
+                                                <div className="flex items-center gap-2 font-medium" style={{ color: '#54407aff' }}>
+                                                    <FaTruck size={14} style={{ color: '#A189CC' }} />
                                                     Shipping Fee
                                                 </div>
                                                 {shippingChargesTotal === 0
@@ -289,11 +290,11 @@ const Cart = () => {
                                             </div>
                                         </div>
 
-                                        <div className="pt-6 border-t border-gray-100">
+                                        <div className="pt-6 border-t border-luxury-purple/30">
                                             <div className="flex justify-between items-end mb-6">
                                                 <div>
-                                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Payable</p>
-                                                    <Title level={2} style={{ marginBottom: 0, color: '#2D5A27', fontWeight: 900 }}>
+                                                    <p className="text-[10px] font-black text-luxury-purple-dark uppercase tracking-widest mb-1">Total Payable</p>
+                                                    <Title level={2} style={{ marginBottom: 0, color: '#0e0e0eff', fontWeight: 900 }}>
                                                         ₹{Math.round(totalPrice).toLocaleString()}
                                                     </Title>
                                                 </div>
@@ -319,11 +320,12 @@ const Cart = () => {
                                             </Link>
                                         </div>
 
-                                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-start gap-3">
+                                        <div className="p-4 rounded-2xl border flex items-start gap-3" style={{ background: 'rgba(161,137,204,0.1)', border: '1px solid rgba(161,137,204,0.2)' }}>
                                             <FaShieldAlt className="text-indigo-500 mt-1" />
                                             <div>
-                                                <Text strong className="text-[11px] uppercase tracking-widest text-gray-700">100% SECURE CHECKOUT</Text>
-                                                <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
+                                                <Text strong className="text-[11px] uppercase tracking-widest" style={{color:'#A189CC'}}>100% SECURE CHECKOUT</Text>
+                                                <p className="text-[10px] mt-1 leading-relaxed" style={{color:'rgba(161,137,204,0.7)'}}>
+
                                                     We use industry-standard encryption. Your payment details are never stored on our servers.
                                                 </p>
                                             </div>
