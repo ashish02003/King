@@ -9,7 +9,7 @@ import { useCart } from '../context/CartContext';
 import toast from 'react-hot-toast';
 import MugWrapPreview from '../components/MugWrapPreview';
 import { Layout, Card, Button, Typography, Space, Tag, InputNumber } from 'antd';
-import { FaTimes, FaArrowLeft, FaPlus, FaMinus } from 'react-icons/fa';
+import { FaTimes, FaArrowLeft, FaPlus, FaMinus, FaChevronLeft, FaChevronRight, FaImage, FaFont } from 'react-icons/fa';
 // customizationAPI no longer needed – frontend clipPath approach is used
 
 const { Content } = Layout;
@@ -19,6 +19,7 @@ const CustomizeProduct = () => {
     const { id } = useParams();
     const canvasRef = useRef(null);
     const fileInputRef = useRef(null);
+    const editorBgInputRef = useRef(null);
     const initialPlaceholdersRef = useRef({});
     const [canvas, setCanvas] = useState(null);
     const [template, setTemplate] = useState(null);
@@ -36,6 +37,7 @@ const CustomizeProduct = () => {
     const [photoTextValue, setPhotoTextValue] = useState('');
     const [photoSide, setPhotoSide] = useState('left');
     const [textSide, setTextSide] = useState('right');
+    const [editorSide, setEditorSide] = useState('center');
     const [selectedUploadShape, setSelectedUploadShape] = useState('auto');
     const [uploadShapeBySlot, setUploadShapeBySlot] = useState({ left: 'auto', center: 'auto', right: 'auto' });
     const [shapeTargetSlot, setShapeTargetSlot] = useState('center');
@@ -52,9 +54,36 @@ const CustomizeProduct = () => {
     const [quantity, setQuantity] = useState(buyNowItem?.template?._id === id ? buyNowItem.quantity : 1);
     const isWrapProduct = (() => {
         const catLower = (template?.category || '').toLowerCase();
-        return catLower.includes('mug') || catLower.includes('bottle') || catLower.includes('case') ||
-            template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'phone';
+        return catLower.includes('mug') || catLower.includes('sipper') || catLower.includes('bottle') || catLower.includes('planter') || catLower.includes('case') ||
+            template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'planter' || template?.wrapType === 'phone';
     })();
+    const isStrictWrapShapeCategory = (() => {
+        const catLower = (template?.category || '').toLowerCase();
+        return catLower.includes('mug') || catLower.includes('sipper') || catLower.includes('bottle') || catLower.includes('planter') ||
+            template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'planter';
+    })();
+    const editorSides = isStrictWrapShapeCategory ? ['left', 'center', 'right'] : ['center'];
+    const parsePrintSize = (raw) => {
+        if (!raw) return null;
+        const nums = String(raw).match(/[\d.]+/g)?.map(Number).filter((n) => Number.isFinite(n)) || [];
+        if (nums.length < 2) return null;
+        const unit = String(raw).toLowerCase();
+        const factor = unit.includes('inch') ? 25.4 : unit.includes('cm') ? 10 : 1;
+        return {
+            widthMm: nums[0] * factor,
+            heightMm: nums[1] * factor
+        };
+    };
+    const printSizeMm = parsePrintSize(template?.printSize);
+    const editorCanvasRatio = printSizeMm ? (printSizeMm.widthMm / Math.max(1, printSizeMm.heightMm)) : 2.1;
+    const editorCanvasCssWidth = Math.round(Math.max(420, Math.min(760, editorCanvasRatio * 220)));
+    const editorCanvasCssHeight = Math.round(Math.max(180, Math.min(320, editorCanvasCssWidth / Math.max(1, editorCanvasRatio))));
+    const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
     // Match admin CreateTemplate.getSideShapeMapFromCanvas (rect → rectangle, mug-wrap primary)
     const placeholderShapeBySide = (() => {
         const objects = template?.canvasSettings?.objects || [];
@@ -64,8 +93,8 @@ const CustomizeProduct = () => {
         if (!placeholders.length) return {};
         const norm = (shape) => (shape === 'rect' ? 'rectangle' : (shape || 'rectangle'));
         const cat = (template?.category || '').toLowerCase();
-        const isWrapTpl = template?.wrapType === 'mug' || template?.wrapType === 'bottle'
-            || cat.includes('mug') || cat.includes('bottle');
+        const isWrapTpl = template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'planter'
+            || cat.includes('mug') || cat.includes('sipper') || cat.includes('bottle') || cat.includes('planter');
         const primaryWrap = placeholders.find((p) => norm(p.shapeType) === 'mug-wrap');
         if (primaryWrap && isWrapTpl) {
             const wrapShape = norm(primaryWrap.shapeType);
@@ -125,14 +154,18 @@ const CustomizeProduct = () => {
                 // Improved robust check for 3D-capable categories
                 const catLower = (data.category || '').toLowerCase();
                 const is3DType = catLower.includes('mug') ||
+                    catLower.includes('sipper') ||
                     catLower.includes('bottle') ||
+                    catLower.includes('planter') ||
                     catLower.includes('case') ||
                     data.wrapType === 'mug' ||
                     data.wrapType === 'bottle' ||
+                    data.wrapType === 'planter' ||
                     data.wrapType === 'phone';
 
                 if (is3DType) {
                     setShowMugPreview(true);
+                    setCustomizationMode('wrapPhotos');
                 }
             } catch (error) {
                 console.error(error);
@@ -159,11 +192,22 @@ const CustomizeProduct = () => {
         if (!template || !canvasRef.current) return;
 
         const catL = (template.category || '').toLowerCase();
-        const isWrap = catL.includes('mug') || catL.includes('bottle') || template.wrapType === 'mug' || template.wrapType === 'bottle';
+        const isWrap = catL.includes('mug') || catL.includes('sipper') || catL.includes('bottle') || catL.includes('planter') || template.wrapType === 'mug' || template.wrapType === 'bottle' || template.wrapType === 'planter';
+        const isPureWrapEditor = catL.includes('mug') || catL.includes('sipper') || catL.includes('bottle') || catL.includes('planter') || template.wrapType === 'mug' || template.wrapType === 'bottle' || template.wrapType === 'planter';
 
-        // Set dimensions: Wide for wraps, Portrait for cases
-        const canvasWidth = isWrap ? 800 : 400;
-        const canvasHeight = isWrap ? 400 : 600;
+        // Set dimensions: Based on printSize ratio for ALL products
+        const wrapCanvasWidth = editorCanvasCssWidth;
+        const wrapCanvasHeight = editorCanvasCssHeight;
+        // Non-wrap: derive portrait/landscape canvas from printSize, else default 380x520
+        const nonWrapRatio = printSizeMm ? (printSizeMm.widthMm / Math.max(1, printSizeMm.heightMm)) : (380 / 520);
+        const nonWrapCanvasWidth = printSizeMm
+            ? Math.round(Math.min(380, Math.max(200, nonWrapRatio >= 1 ? 380 : 520 * nonWrapRatio)))
+            : 380;
+        const nonWrapCanvasHeight = printSizeMm
+            ? Math.round(Math.min(520, Math.max(200, nonWrapCanvasWidth / Math.max(0.3, nonWrapRatio))))
+            : 520;
+        const canvasWidth = isWrap ? wrapCanvasWidth : nonWrapCanvasWidth;
+        const canvasHeight = isWrap ? wrapCanvasHeight : nonWrapCanvasHeight;
 
         const initCanvas = new fabric.Canvas(canvasRef.current, {
             height: canvasHeight,
@@ -171,6 +215,29 @@ const CustomizeProduct = () => {
             backgroundColor: '#ffffff',
             preserveObjectStacking: true
         });
+
+        initCanvas.setDimensions({ width: canvasWidth, height: canvasHeight });
+        if (initCanvas.wrapperEl) {
+            initCanvas.wrapperEl.style.width = `${canvasWidth}px`;
+            initCanvas.wrapperEl.style.height = `${canvasHeight}px`;
+            initCanvas.wrapperEl.style.display = 'block';
+            initCanvas.wrapperEl.style.position = 'relative';
+            initCanvas.wrapperEl.style.touchAction = 'none'; // Prevent browser scroll interference
+        }
+        if (initCanvas.lowerCanvasEl) {
+            initCanvas.lowerCanvasEl.style.width = `${canvasWidth}px`;
+            initCanvas.lowerCanvasEl.style.height = `${canvasHeight}px`;
+            initCanvas.lowerCanvasEl.style.display = 'block';
+            initCanvas.lowerCanvasEl.style.touchAction = 'none';
+        }
+        if (initCanvas.upperCanvasEl) {
+            initCanvas.upperCanvasEl.style.width = `${canvasWidth}px`;
+            initCanvas.upperCanvasEl.style.height = `${canvasHeight}px`;
+            initCanvas.upperCanvasEl.style.display = 'block';
+            initCanvas.upperCanvasEl.style.touchAction = 'none';
+        }
+        if (initCanvas.calcOffset) initCanvas.calcOffset();
+        initCanvas.requestRenderAll();
 
         setCanvas(initCanvas);
 
@@ -262,6 +329,31 @@ const CustomizeProduct = () => {
 
         const handleObjectModified = (e) => {
             const obj = e.target;
+            if (isPureWrapEditor && obj && (obj.role === 'free-image' || obj.role === 'side-text' || obj.role === 'editor-scene-background')) {
+                setTimeout(() => {
+                    const allObjects = initCanvas.getObjects();
+                    const designObjects = allObjects.filter((o) =>
+                        o.role === 'clipped-image' ||
+                        o.role === 'free-image' ||
+                        o.role === 'side-text' ||
+                        (o.type === 'i-text' && o.role !== 'placeholder-label')
+                    );
+                    const envObjects = allObjects.filter((o) => !designObjects.includes(o));
+                    const originalVis = envObjects.map((o) => ({ obj: o, visible: o.visible }));
+                    const originalBg = initCanvas.backgroundColor;
+                    envObjects.forEach((o) => o.set('visible', false));
+                    initCanvas.set('backgroundColor', null);
+                    initCanvas.discardActiveObject();
+                    initCanvas.renderAll();
+                    const snapshot = initCanvas.toDataURL({ multiplier: 2, format: 'png' });
+                    setPreviewImage(snapshot);
+                    setMugPreviewUrl(snapshot);
+                    setShowMugPreview(true);
+                    originalVis.forEach((item) => item.obj.set('visible', item.visible));
+                    initCanvas.set('backgroundColor', originalBg);
+                    initCanvas.renderAll();
+                }, 0);
+            }
             if (obj && obj.role === 'clipped-image' && obj.maskRef) {
                 syncClipPathToPlaceholder(obj);
                 const mask = obj.maskRef;
@@ -324,13 +416,81 @@ const CustomizeProduct = () => {
         initCanvas.on('selection:created', handleSelection);
         initCanvas.on('selection:updated', handleSelection);
         initCanvas.on('selection:cleared', handleCleared);
+        initCanvas.on('text:changed', (e) => {
+            const obj = e.target;
+            if (obj?.role === 'side-text') {
+                const slot = obj.sideSlot || 'center';
+                setPhotoTextValue(obj.text || '');
+                setSlotAssets((prev) => ({
+                    ...prev,
+                    [slot]: {
+                        ...prev[slot],
+                        text: obj.text || ''
+                    }
+                }));
+                if (isPureWrapEditor) {
+                    setTimeout(() => {
+                        const allObjects = initCanvas.getObjects();
+                        const designObjects = allObjects.filter((o) =>
+                            o.role === 'clipped-image' ||
+                            o.role === 'free-image' ||
+                            o.role === 'side-text' ||
+                            (o.type === 'i-text' && o.role !== 'placeholder-label')
+                        );
+                        const envObjects = allObjects.filter((o) => !designObjects.includes(o));
+                        const originalVis = envObjects.map((o) => ({ obj: o, visible: o.visible }));
+                        const originalBg = initCanvas.backgroundColor;
+                        envObjects.forEach((o) => o.set('visible', false));
+                        initCanvas.set('backgroundColor', null);
+                        initCanvas.discardActiveObject();
+                        initCanvas.renderAll();
+                        const snapshot = initCanvas.toDataURL({ multiplier: 2, format: 'png' });
+                        setPreviewImage(snapshot);
+                        setMugPreviewUrl(snapshot);
+                        setShowMugPreview(true);
+                        originalVis.forEach((item) => item.obj.set('visible', item.visible));
+                        initCanvas.set('backgroundColor', originalBg);
+                        initCanvas.renderAll();
+                    }, 0);
+                }
+            }
+        });
         initCanvas.on('object:moving', (e) => {
             handleImageTransformation(e);
             if (e.target && e.target.role === 'placeholder') syncLabelToPlaceholder(e.target);
+
+            // ── Boundary Constraint for free-image (user uploads) ──
+            const obj = e.target;
+            if (obj && obj.role === 'free-image') {
+                const cW = initCanvas.width;
+                const cH = initCanvas.height;
+                const br = obj.getBoundingRect();
+                if (br.width <= cW) {
+                    if (br.left < 0) obj.set('left', obj.left - br.left);
+                    else if (br.left + br.width > cW) obj.set('left', obj.left - (br.left + br.width - cW));
+                }
+                if (br.height <= cH) {
+                    if (br.top < 0) obj.set('top', obj.top - br.top);
+                    else if (br.top + br.height > cH) obj.set('top', obj.top - (br.top + br.height - cH));
+                }
+                obj.setCoords();
+            }
+
+            // Live preview update during move
+            if (isPureWrapEditor) {
+                if (initCanvas._liveSyncTimeout) clearTimeout(initCanvas._liveSyncTimeout);
+                initCanvas._liveSyncTimeout = setTimeout(() => syncWrapPreviewFromCanvas(true), 50);
+            }
         });
         initCanvas.on('object:scaling', (e) => {
             handleImageTransformation(e);
             if (e.target && e.target.role === 'placeholder') syncLabelToPlaceholder(e.target);
+            
+            // Live preview update during scale
+            if (isPureWrapEditor) {
+                if (initCanvas._liveSyncTimeout) clearTimeout(initCanvas._liveSyncTimeout);
+                initCanvas._liveSyncTimeout = setTimeout(() => syncWrapPreviewFromCanvas(true), 50);
+            }
         });
         initCanvas.on('object:rotating', (e) => {
             if (e.target && e.target.role === 'placeholder') syncLabelToPlaceholder(e.target);
@@ -399,8 +559,8 @@ const CustomizeProduct = () => {
         });
 
         const setupTemplate = async () => {
-            // 1. Background Image
-            if (template.backgroundImageUrl) {
+            // Wrap editor uses print-area canvas directly, so we skip product/mockup images here.
+            if (template.backgroundImageUrl && !isPureWrapEditor) {
                 try {
                     const isWebUrl = template.backgroundImageUrl.startsWith('http');
                     const bgUrl = isWebUrl
@@ -429,7 +589,7 @@ const CustomizeProduct = () => {
             }
 
             // 2. Load Top Overlay
-            if (template.overlayImageUrl && template.overlayImageUrl.includes('http')) {
+            if (template.overlayImageUrl && template.overlayImageUrl.includes('http') && !isPureWrapEditor) {
                 try {
                     const img = await fabric.FabricImage.fromURL(template.overlayImageUrl, { crossOrigin: 'anonymous' });
                     img.scaleToWidth(300);
@@ -447,6 +607,11 @@ const CustomizeProduct = () => {
             }
 
             // 3. Load Objects
+            if (isPureWrapEditor) {
+                initCanvas.renderAll();
+                return;
+            }
+
             if (template.canvasSettings && template.canvasSettings.objects) {
                 try {
                     const objectsToLoad = JSON.parse(JSON.stringify(template.canvasSettings.objects)).map(obj => {
@@ -750,6 +915,7 @@ const CustomizeProduct = () => {
     };
 
     const getEffectiveSlotShape = (slot) => {
+        if (isStrictWrapShapeCategory) return 'mug-wrap';
         if (hasAdminLockedShapes && adminMockupShapeBySide[slot]) {
             return normalizeShapeType(adminMockupShapeBySide[slot]);
         }
@@ -767,7 +933,7 @@ const CustomizeProduct = () => {
     };
 
     const applyUploadShapeSelection = async (shapeType) => {
-        const normalized = normalizeShapeType(shapeType);
+        const normalized = isStrictWrapShapeCategory ? 'mug-wrap' : normalizeShapeType(shapeType);
         setSelectedUploadShape(normalized);
         const targetSlots = resolveShapeTargetSlots();
         const currentSlot = getCurrentShapeTarget();
@@ -847,9 +1013,27 @@ const CustomizeProduct = () => {
     // Keep shape selector synced with current mode/slot context.
     useEffect(() => {
         const slot = getCurrentShapeTarget();
-        const current = uploadShapeBySlot?.[slot] || 'auto';
+        const current = isStrictWrapShapeCategory ? 'mug-wrap' : (uploadShapeBySlot?.[slot] || 'auto');
         setSelectedUploadShape(current);
-    }, [customizationMode, photoSide, shapeTargetSlot, isWrapProduct, uploadShapeBySlot]);
+    }, [customizationMode, photoSide, shapeTargetSlot, isWrapProduct, uploadShapeBySlot, isStrictWrapShapeCategory]);
+
+    useEffect(() => {
+        if (!isStrictWrapShapeCategory) return;
+        setCustomizationMode('wrapPhotos');
+        setPhotoSide(editorSide);
+        setTextSide(editorSide);
+        setShapeTargetSlot(editorSide);
+        setActiveUploadSlot(editorSide);
+    }, [editorSide, isStrictWrapShapeCategory]);
+
+    useEffect(() => {
+        if (!selectedObject) return;
+        if (selectedObject.role === 'side-text') {
+            setEditorSide(selectedObject.sideSlot || 'center');
+            setTextSide(selectedObject.sideSlot || 'center');
+            setPhotoTextValue(selectedObject.text || '');
+        }
+    }, [selectedObject]);
 
     const buildMaskForShape = async (placeholder, shapeType) => {
         const shape = normalizeShapeType(shapeType);
@@ -908,7 +1092,59 @@ const CustomizeProduct = () => {
         return cloned;
     };
 
-    const upsertSideText = () => {
+    const addCanvasTextToSide = (slotOverride = null) => {
+        const targetSlot = slotOverride || textSide;
+        if (!canvas) return;
+
+        const slotXMap = {
+            left: canvas.width * 0.25,
+            center: canvas.width * 0.5,
+            right: canvas.width * 0.75
+        };
+
+        const existing = canvas.getObjects().find(
+            (o) => o.role === 'side-text' && o.sideSlot === targetSlot
+        );
+
+        if (existing) {
+            canvas.setActiveObject(existing);
+            if (typeof existing.enterEditing === 'function') existing.enterEditing();
+            canvas.renderAll();
+            return;
+        }
+
+        const textObj = new fabric.IText('Text', {
+            fontFamily: 'Arial',
+            fontSize: 34,
+            fill: '#16a34a',
+            fontWeight: 'bold',
+            originX: 'center',
+            originY: 'center',
+            left: slotXMap[targetSlot] || slotXMap.center,
+            top: canvas.height / 2,
+            role: 'side-text',
+            sideSlot: targetSlot,
+            textSlot: targetSlot
+        });
+
+        canvas.add(textObj);
+        canvas.setActiveObject(textObj);
+        if (typeof textObj.enterEditing === 'function') textObj.enterEditing();
+        if (canvas.overlayImage) canvas.bringObjectToFront(canvas.overlayImage);
+        canvas.renderAll();
+        setTextSide(targetSlot);
+        setPhotoTextValue(textObj.text || 'Text');
+        setSlotAssets((prev) => ({
+            ...prev,
+            [targetSlot]: {
+                ...prev[targetSlot],
+                text: textObj.text || 'Text'
+            }
+        }));
+    };
+
+    const upsertSideText = (slotOverride = null) => {
+        const targetSlot = slotOverride || textSide;
         if (!canvas || !photoTextValue.trim()) {
             toast.error('Please enter text first');
             return;
@@ -925,7 +1161,7 @@ const CustomizeProduct = () => {
             .forEach((o) => canvas.remove(o));
 
         const existing = canvas.getObjects().find(
-            (o) => o.role === 'side-text' && o.sideSlot === textSide
+            (o) => o.role === 'side-text' && o.sideSlot === targetSlot
         );
 
         if (existing) {
@@ -939,11 +1175,11 @@ const CustomizeProduct = () => {
                 fontWeight: 'bold',
                 originX: 'center',
                 originY: 'center',
-                left: slotXMap[textSide] || slotXMap.right,
+                left: slotXMap[targetSlot] || slotXMap.right,
                 top: canvas.height / 2,
                 role: 'side-text',
-                sideSlot: textSide,
-                textSlot: textSide
+                sideSlot: targetSlot,
+                textSlot: targetSlot
             });
             canvas.add(textObj);
             canvas.setActiveObject(textObj);
@@ -953,8 +1189,8 @@ const CustomizeProduct = () => {
         canvas.renderAll();
         setSlotAssets((prev) => ({
             ...prev,
-            [textSide]: {
-                ...prev[textSide],
+            [targetSlot]: {
+                ...prev[targetSlot],
                 text: photoTextValue.trim()
             }
         }));
@@ -974,6 +1210,7 @@ const CustomizeProduct = () => {
         const loadingToast = toast.loading('Uploading...');
         try {
             const slotsToApply = (() => {
+                if (isStrictWrapShapeCategory) return ['wrap-layout'];
                 if (!isWrapProduct) return [activeUploadSlot || 'center'];
                 const sortedPh = getSortedPlaceholders(canvas);
                 const n = sortedPh.length;
@@ -986,7 +1223,9 @@ const CustomizeProduct = () => {
                 return [activeUploadSlot || 'center'];
             })();
 
-            // ── Step 2: Upload raw image to Cloudinary ───────────────────────────────
+            const localImageUrl = await readFileAsDataUrl(file);
+
+            // ── Step 2: Start Cloudinary upload, but render locally first ───────────
             toast.loading('Uploading 0%', {
                 id: loadingToast,
                 style: { background: '#f0fdf4', border: '1px solid #86efac', color: '#16a34a' }
@@ -995,7 +1234,7 @@ const CustomizeProduct = () => {
             const formData = new FormData();
             formData.append('image', file);
 
-            const uploadRes = await axios.post(`${API_BASE}/upload`, formData, {
+            const uploadPromise = axios.post(`${API_BASE}/upload`, formData, {
                 onUploadProgress: (ev) => {
                     if (ev.total) {
                         const pct = Math.round((ev.loaded * 100) / ev.total);
@@ -1007,14 +1246,49 @@ const CustomizeProduct = () => {
                 }
             });
 
-            const imageUrl = uploadRes.data.url;
+            let imageUrl = localImageUrl;
+
+            // For BOTH wrap AND non-wrap that have no placeholder shapes → add as editable free image
+            const hasSufficientPlaceholders = !isStrictWrapShapeCategory && getSortedPlaceholders(canvas).length > 0;
+
+            if (isStrictWrapShapeCategory || !hasSufficientPlaceholders) {
+                await addEditableImageToCanvas(localImageUrl);
+
+                try {
+                    const uploadRes = await uploadPromise;
+                    imageUrl = uploadRes.data.url || localImageUrl;
+                } catch (uploadErr) {
+                    console.error('Cloud upload failed after local preview:', uploadErr);
+                }
+
+                // Update slot assets so preview works
+                const slot = activeUploadSlot || 'center';
+                setSlotAssets((prev) => ({
+                    ...prev,
+                    [slot]: { ...prev[slot], imageUrl, shapeType: 'rectangle', transform: { zoom: 1, offsetX: 0, offsetY: 0 } }
+                }));
+
+                // Update preview snapshot
+                setTimeout(() => {
+                    if (canvas) {
+                        canvas.discardActiveObject();
+                        canvas.renderAll();
+                        const snap = canvas.toDataURL({ format: 'png', quality: 1 });
+                        setPreviewImage(snap);
+                    }
+                }, 200);
+
+                toast.success('Image added! Drag & resize on canvas.', { id: loadingToast });
+                setActiveUploadSlot(null);
+                return;
+            }
 
             // ── NEW: Handle User-Added Shape Filling ───────────────────────────
             if (canvas.activePlaceholder) {
                 const placeholder = canvas.activePlaceholder;
                 canvas.activePlaceholder = null;
 
-                const img = await fabric.FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' });
+                const img = await fabric.FabricImage.fromURL(localImageUrl);
                 if (!img) return;
 
                 // Clone shape as mask
@@ -1071,11 +1345,29 @@ const CustomizeProduct = () => {
                 if (canvas.overlayImage) canvas.bringObjectToFront(canvas.overlayImage);
                 canvas.renderAll();
 
+                try {
+                    const uploadRes = await uploadPromise;
+                    imageUrl = uploadRes.data.url || localImageUrl;
+                } catch (uploadErr) {
+                    console.error('Cloud upload failed after local preview:', uploadErr);
+                }
+
+                const placeholderSlot = placeholder.slot || activeUploadSlot || 'center';
+                setSlotAssets((prev) => ({
+                    ...prev,
+                    [placeholderSlot]: {
+                        ...prev[placeholderSlot],
+                        imageUrl,
+                        shapeType: 'mug-wrap',
+                        transform: prev[placeholderSlot]?.transform || { zoom: 1, offsetX: 0, offsetY: 0 }
+                    }
+                }));
+
                 // ── Step 8: Trigger 3D preview visibility for relevant categories ───────────
                 const catL = (template.category || '').toLowerCase();
                 const nameL = (template.name || '').toLowerCase();
-                const is3D = catL.includes('mug') || catL.includes('bottle') || catL.includes('case') || nameL.includes('mug') ||
-                    template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'phone';
+                const is3D = catL.includes('mug') || catL.includes('sipper') || catL.includes('bottle') || catL.includes('planter') || catL.includes('case') || nameL.includes('mug') ||
+                    template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'planter' || template?.wrapType === 'phone';
 
                 if (is3D) {
                     setTimeout(() => {
@@ -1139,7 +1431,7 @@ const CustomizeProduct = () => {
             const putImageInSlot = async (slot) => {
                 let img;
                 try {
-                    img = await fabric.FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' });
+                    img = await fabric.FabricImage.fromURL(localImageUrl);
                 } catch (loadErr) {
                     console.error('Image load failed:', loadErr);
                     return;
@@ -1292,6 +1584,23 @@ const CustomizeProduct = () => {
                 await putImageInSlot(slot);
             }
 
+            try {
+                const uploadRes = await uploadPromise;
+                imageUrl = uploadRes.data.url || localImageUrl;
+                setSlotAssets((prev) => {
+                    const next = { ...prev };
+                    slotsToApply.forEach((slot) => {
+                        next[slot] = {
+                            ...next[slot],
+                            imageUrl
+                        };
+                    });
+                    return next;
+                });
+            } catch (uploadErr) {
+                console.error('Cloud upload failed after local preview:', uploadErr);
+            }
+
             const phCount = getSortedPlaceholders(canvas).length;
 
             if (customizationMode === 'singlePhotoBothSides') {
@@ -1338,8 +1647,8 @@ const CustomizeProduct = () => {
             // ── Step 8: Trigger 3D preview visibility for relevant categories ───────────
             const catL = (template.category || '').toLowerCase();
             const nameL = (template.name || '').toLowerCase();
-            const is3D = catL.includes('mug') || catL.includes('bottle') || catL.includes('case') || nameL.includes('mug') ||
-                template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'phone';
+            const is3D = catL.includes('mug') || catL.includes('sipper') || catL.includes('bottle') || catL.includes('planter') || catL.includes('case') || nameL.includes('mug') ||
+                template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'planter' || template?.wrapType === 'phone';
 
             if (is3D) {
                 // Wait briefly for canvas to finish updating, then take snapshots
@@ -1577,8 +1886,8 @@ const CustomizeProduct = () => {
 
         // 5. Set URLs for modal
         const catLower = (template.category || '').toLowerCase();
-        const is3D = catLower.includes('mug') || catLower.includes('bottle') || catLower.includes('case') ||
-            template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'phone';
+        const is3D = catLower.includes('mug') || catLower.includes('sipper') || catLower.includes('bottle') || catLower.includes('planter') || catLower.includes('case') ||
+            template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'planter' || template?.wrapType === 'phone';
 
         if (is3D || showMugPreview) {
             setMugPreviewUrl(designOnlyUrl);
@@ -1587,7 +1896,441 @@ const CustomizeProduct = () => {
         setPreviewModalOpen(true);
     };
 
+    const cycleEditorSide = (direction) => {
+        if (!editorSides.length) return;
+        const currentIndex = editorSides.indexOf(editorSide);
+        const safeIndex = currentIndex >= 0 ? currentIndex : 0;
+        const nextIndex = (safeIndex + direction + editorSides.length) % editorSides.length;
+        setEditorSide(editorSides[nextIndex]);
+    };
+
+    const handleEditorImageUpload = () => {
+        setCustomizationMode('wrapPhotos');
+        setActiveUploadSlot(editorSide);
+        fileInputRef.current?.click();
+    };
+
+    const uploadImageForSide = (side) => {
+        setEditorSide(side);
+        setCustomizationMode('wrapPhotos');
+        setActiveUploadSlot(side);
+        setShapeTargetSlot(side);
+        fileInputRef.current?.click();
+    };
+
+    const handleEditorBackgroundUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file || !canvas) return;
+        e.target.value = '';
+
+        try {
+            const dataUrl = await readFileAsDataUrl(file);
+            const img = await fabric.FabricImage.fromURL(dataUrl);
+            const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+            const existingBg = canvas.getObjects().find((o) => o.role === 'editor-scene-background');
+            if (existingBg) canvas.remove(existingBg);
+
+            img.set({
+                left: canvas.width / 2,
+                top: canvas.height / 2,
+                originX: 'center',
+                originY: 'center',
+                scaleX: scale,
+                scaleY: scale,
+                selectable: true,
+                evented: true,
+                role: 'editor-scene-background',
+                cornerStyle: 'circle',
+                cornerColor: '#2563eb',
+                borderColor: '#2563eb',
+                transparentCorners: false
+            });
+            canvas.add(img);
+            canvas.sendObjectToBack(img);
+            canvas.renderAll();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const clearEditorBackground = () => {
+        if (!canvas) return;
+        const existingBg = canvas.getObjects().find((o) => o.role === 'editor-scene-background');
+        if (existingBg) {
+            canvas.remove(existingBg);
+            canvas.renderAll();
+        }
+    };
+
+    const syncWrapPreviewFromCanvas = (isInteractive = false) => {
+        if (!canvas) return;
+        const allObjects = canvas.getObjects();
+        const designObjects = allObjects.filter((o) =>
+            o.role === 'clipped-image' ||
+            o.role === 'free-image' ||
+            o.role === 'side-text' ||
+            (o.type === 'i-text' && o.role !== 'placeholder-label')
+        );
+        const envObjects = allObjects.filter((o) => !designObjects.includes(o));
+        const originalVis = envObjects.map((o) => ({ obj: o, visible: o.visible }));
+        const originalBg = canvas.backgroundColor;
+
+        // Interactive sync is faster: don't hide background if possible, or use lower multiplier
+        envObjects.forEach((o) => o.set('visible', false));
+        canvas.set('backgroundColor', null);
+        
+        // Don't discard selection during interactive drag (causes flicker/shaking)
+        if (!isInteractive) canvas.discardActiveObject();
+        
+        canvas.renderAll();
+
+        const snapshot = canvas.toDataURL({ 
+            multiplier: isInteractive ? 1 : 2, 
+            format: 'png',
+            quality: isInteractive ? 0.6 : 1
+        });
+        setPreviewImage(snapshot);
+        setMugPreviewUrl(snapshot);
+        setShowMugPreview(true);
+
+        originalVis.forEach((item) => item.obj.set('visible', item.visible));
+        canvas.set('backgroundColor', originalBg);
+        canvas.renderAll();
+    };
+
+    const addEditableImageToCanvas = async (sourceUrl) => {
+        if (!canvas || !sourceUrl) return null;
+        const img = await fabric.FabricImage.fromURL(sourceUrl);
+        const existingWrapImages = canvas.getObjects().filter((o) => o.role === 'free-image');
+        const offset = existingWrapImages.length * 18;
+        // Scale to fit within canvas (85% of binding dimension) — image will never exceed canvas size
+        const scale = Math.min((canvas.width * 0.85) / img.width, (canvas.height * 0.85) / img.height);
+
+        img.set({
+            left: canvas.width / 2 + offset,
+            top: canvas.height / 2 + offset,
+            originX: 'center',
+            originY: 'center',
+            scaleX: scale,
+            scaleY: scale,
+            role: 'free-image',
+            selectable: true,
+            evented: true,
+            stroke: 'rgba(99,102,241,0.6)',
+            strokeWidth: 2,
+            cornerStyle: 'circle',
+            cornerColor: '#6366f1',
+            borderColor: '#6366f1',
+            cornerSize: 10,
+            transparentCorners: false
+        });
+        img.setCoords();
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        canvas.bringObjectToFront(img);
+        if (canvas.calcOffset) canvas.calcOffset();
+        canvas.renderAll();
+        // Delay preview sync so canvas renders first
+        setTimeout(() => syncWrapPreviewFromCanvas(), 100);
+        return img;
+    };
+
+    const handleEditorAddText = () => {
+        if (!canvas) return;
+        const textObj = new fabric.IText('Text', {
+            fontFamily: 'Arial',
+            fontSize: 34,
+            fill: '#16a34a',
+            fontWeight: 'bold',
+            originX: 'center',
+            originY: 'center',
+            left: canvas.width / 2,
+            top: canvas.height / 2,
+            role: 'side-text'
+        });
+        canvas.add(textObj);
+        canvas.setActiveObject(textObj);
+        if (typeof textObj.enterEditing === 'function') textObj.enterEditing();
+        canvas.renderAll();
+        syncWrapPreviewFromCanvas();
+    };
+
+    const currentSideAsset = slotAssets?.[editorSide] || {};
+
+    const WrapEditorLayout = () => (
+        <Layout style={{ minHeight: 'calc(100vh - 80px)', background: '#efefef' }}>
+            <Content style={{ padding: '16px 12px' }}>
+                <div className="container mx-auto">
+                    <div className="mb-4 flex items-center justify-between">
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="flex items-center gap-2 px-4 py-2 bg-white rounded-full text-xs font-black text-[#1e293b] shadow-sm uppercase tracking-[0.15em]"
+                        >
+                            <FaArrowLeft className="text-sm" /> Back
+                        </button>
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs font-black text-slate-500 uppercase">{template.name}</span>
+                            <button
+                                onClick={handlePreview}
+                                className="px-4 py-2 rounded-full bg-[#111] text-white text-xs font-black uppercase tracking-[0.15em]"
+                            >
+                                Preview
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-[1.05fr_1fr] gap-4">
+                        <div className="bg-[#222] rounded-[18px] min-h-[640px] p-4 flex items-center justify-center overflow-hidden">
+                            <div className="w-full max-w-[560px]">
+                                <MugWrapPreview
+                                    photoUrl={mugPreviewUrl || previewImage || null}
+                                    templateBgUrl={template?.backgroundImageUrl}
+                                    mockupViews={template?.mockupViews}
+                                    slotAssets={{}}
+                                    placeholderShapeBySide={previewShapeBySide}
+                                    printSizeMm={printSizeMm}
+                                    wrapType={template?.wrapType || (() => {
+                                        const cat = (template.category || '').toLowerCase();
+                                        if (cat.includes('mug')) return 'mug';
+                                        if (cat.includes('sipper')) return 'bottle';
+                                        if (cat.includes('bottle')) return 'bottle';
+                                        if (cat.includes('planter')) return 'planter';
+                                        return 'mug';
+                                    })()}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="bg-[#333] rounded-[18px] border border-[#4a4a4a] p-3 text-white">
+                            <div className="grid grid-cols-3 gap-2 mb-3">
+                                {['Add Text', 'Preview', 'Clear Canvas'].map((label) => (
+                                    <button
+                                        key={label}
+                                        onClick={() => {
+                                            if (label === 'Add Text') handleEditorAddText();
+                                            if (label === 'Preview') handlePreview();
+                                            if (label === 'Clear Canvas' && canvas) {
+                                                canvas.getObjects().forEach((o) => {
+                                                    if (o.role === 'free-image' || o.role === 'side-text') canvas.remove(o);
+                                                });
+                                                canvas.renderAll();
+                                                syncWrapPreviewFromCanvas();
+                                            }
+                                        }}
+                                        className="border border-[#d8d8d8] text-white text-xs font-bold py-2 bg-transparent hover:bg-white/10 transition-all"
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-10 h-10 border border-white/70 bg-transparent" />
+                                <input
+                                    value="#222222"
+                                    readOnly
+                                    className="w-24 bg-white text-[#222] border-none px-2 py-1 text-xs font-semibold"
+                                />
+                                <span className="text-xs text-gray-300">Scene background</span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                <button
+                                    onClick={() => editorBgInputRef.current?.click()}
+                                    className="border border-white/70 py-3 text-sm font-semibold hover:bg-white/10 transition-all"
+                                >
+                                    Add Background Image
+                                </button>
+                                <button
+                                    onClick={clearEditorBackground}
+                                    className="border border-white/70 py-3 text-sm font-semibold hover:bg-white/10 transition-all"
+                                >
+                                    Clear Background Image
+                                </button>
+                            </div>
+
+                            <p className="text-xs text-gray-200 mb-2">
+                                Layout size (mm): {printSizeMm ? `${Math.round(printSizeMm.widthMm)} x ${Math.round(printSizeMm.heightMm)}` : (template.printSize || 'Not set')}
+                            </p>
+
+                            <div className="border border-[#cfcfcf] bg-[#f5f5f5] p-2 mb-3">
+                                <p className="text-[10px] text-[#333] mb-1">
+                                    Canvas objects: {canvas ? canvas.getObjects().length : 0}
+                                </p>
+                                <div className="bg-[linear-gradient(45deg,#efefef_25%,transparent_25%),linear-gradient(-45deg,#efefef_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#efefef_75%),linear-gradient(-45deg,transparent_75%,#efefef_75%)] bg-[length:24px_24px] bg-[position:0_0,0_12px,12px_-12px,-12px_0px] min-h-[360px] overflow-auto">
+                                    <div
+                                        style={{
+                                            width: `${editorCanvasCssWidth}px`,
+                                            height: `${editorCanvasCssHeight}px`,
+                                            position: 'relative',
+                                            background: 'transparent',
+                                            border: '1px dashed rgba(0,0,0,0.08)',
+                                            margin: '0 auto',
+                                            touchAction: 'none' // Prevent screen shaking/scrolling during drag
+                                        }}
+                                    >
+                                        <canvas
+                                            ref={canvasRef}
+                                            style={{
+                                                display: 'block',
+                                                background: 'transparent',
+                                                touchAction: 'none'
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                <button
+                                    onClick={handleEditorImageUpload}
+                                    className="border border-white/70 py-3 text-sm font-semibold hover:bg-white/10 transition-all"
+                                >
+                                    Add Image
+                                </button>
+                                <button
+                                    onClick={handleEditorAddText}
+                                    className="border border-white/70 py-3 text-sm font-semibold hover:bg-white/10 transition-all"
+                                >
+                                    Add Text
+                                </button>
+                            </div>
+
+                            {(selectedObject?.role === 'clipped-image' || selectedObject?.role === 'free-image') && (
+                                <div className="mb-4">
+                                    <label className="block text-xs font-bold mb-2">Image Scale</label>
+                                    <input
+                                        type="range"
+                                        min="1"
+                                        max="3"
+                                        step="0.01"
+                                        className="w-full"
+                                        value={selectedObject.role === 'clipped-image'
+                                            ? selectedObject.scaleX / (selectedObject.maskRef?.getScaledWidth() / selectedObject.width)
+                                            : selectedObject.scaleX || 1}
+                                        onChange={(e) => {
+                                            const zoom = parseFloat(e.target.value);
+                                            const newScale = selectedObject.role === 'clipped-image'
+                                                ? Math.max(
+                                                    selectedObject.maskRef.getScaledWidth() / selectedObject.width,
+                                                    selectedObject.maskRef.getScaledHeight() / selectedObject.height
+                                                ) * zoom
+                                                : zoom;
+                                            selectedObject.set({ scaleX: newScale, scaleY: newScale });
+                                            canvas.renderAll();
+                                            // Live sync from slider too
+                                            if (canvas._liveSyncTimeout) clearTimeout(canvas._liveSyncTimeout);
+                                            canvas._liveSyncTimeout = setTimeout(() => syncWrapPreviewFromCanvas(true), 50);
+                                        }}
+                                        onMouseUp={() => syncWrapPreviewFromCanvas()}
+                                        onTouchEnd={() => syncWrapPreviewFromCanvas()}
+                                    />
+                                </div>
+                            )}
+
+                            {(selectedObject?.type === 'i-text' || selectedObject?.type === 'text') && (
+                                <div className="space-y-3 mb-4">
+                                    <textarea
+                                        value={selectedObject.text || ''}
+                                        onChange={(e) => {
+                                            selectedObject.set('text', e.target.value);
+                                            canvas.renderAll();
+                                        }}
+                                        rows={3}
+                                        className="w-full text-black p-2"
+                                    />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <input
+                                            type="color"
+                                            value={selectedObject.fill || '#000000'}
+                                            onChange={(e) => {
+                                                selectedObject.set('fill', e.target.value);
+                                                canvas.renderAll();
+                                            }}
+                                            className="w-full h-10"
+                                        />
+                                        <input
+                                            type="number"
+                                            value={selectedObject.fontSize || 24}
+                                            onChange={(e) => {
+                                                selectedObject.set('fontSize', Number(e.target.value));
+                                                canvas.renderAll();
+                                            }}
+                                            className="w-full text-black px-2"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-4 gap-2 mb-3">
+                                <button className="border border-white/50 py-2 text-xs">Delete</button>
+                                <button className="border border-white/50 py-2 text-xs">Duplicate</button>
+                                <button className="border border-white/50 py-2 text-xs">Front</button>
+                                <button className="border border-white/50 py-2 text-xs">Back</button>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-xs font-bold mb-2">Opacity:</label>
+                                <input
+                                    type="range"
+                                    min="0.1"
+                                    max="1"
+                                    step="0.01"
+                                    className="w-full"
+                                    value={selectedObject?.opacity || 1}
+                                    onChange={(e) => {
+                                        if (!selectedObject) return;
+                                        selectedObject.set('opacity', Number(e.target.value));
+                                        canvas.renderAll();
+                                    }}
+                                />
+                            </div>
+
+                            <input type="file" ref={fileInputRef} hidden onChange={handleImageUpload} />
+                            <input type="file" ref={editorBgInputRef} hidden accept="image/*" onChange={handleEditorBackgroundUpload} />
+                        </div>
+                    </div>
+
+                    <div className="mt-4 bg-white rounded-[18px] p-4 shadow-sm">
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                                <span className="text-xs font-black uppercase text-slate-500">Quantity</span>
+                                <div className="flex items-center gap-3">
+                                    <button onClick={() => setQuantity(q => Math.max(template.moq || 1, q - 1))} className="w-9 h-9 rounded-lg border">-</button>
+                                    <span className="min-w-8 text-center font-black">{quantity}</span>
+                                    <button onClick={() => setQuantity(q => q + 1)} className="w-9 h-9 rounded-lg border">+</button>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 w-full md:w-auto">
+                                <button
+                                    onClick={() => handleAddToCart(false)}
+                                    className="flex-1 md:flex-none px-6 py-3 rounded-xl bg-[#111] text-white text-xs font-black uppercase tracking-[0.15em]"
+                                >
+                                    {loadingAction === 'cart' ? 'Saving...' : 'Add To Cart'}
+                                </button>
+                                <button
+                                    onClick={() => handleAddToCart(true)}
+                                    className="flex-1 md:flex-none px-6 py-3 rounded-xl bg-[#2D5A27] text-white text-xs font-black uppercase tracking-[0.15em]"
+                                >
+                                    {loadingAction === 'order' ? 'Preparing...' : 'Proceed To Buy'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Content>
+        </Layout>
+    );
+
     if (!template) return <div className="p-20 text-center">Loading...</div>;
+    if (isStrictWrapShapeCategory) {
+        return (
+            <>
+                {WrapEditorLayout()}
+                {previewModalOpen && PreviewModal()}
+            </>
+        );
+    }
 
     const TabButton = ({ name, icon, label }) => (
         <button className={`flex-1 p-3 text-center border-b-2 font-medium transition-colors ${activeTab === name ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
@@ -1691,7 +2434,7 @@ const CustomizeProduct = () => {
                                 </div>
 
                                 {/* 3D View (If applicable) */}
-                                {(template?.wrapType === 'mug' || template?.wrapType === 'bottle' || showMugPreview) && (
+                                {(template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'planter' || showMugPreview) && (
                                     <div className="flex flex-col h-full bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden relative">
                                         <div className="absolute top-4 right-4 z-20">
                                             <button
@@ -1706,12 +2449,14 @@ const CustomizeProduct = () => {
                                             <MugWrapPreview
                                                 photoUrl={mugPreviewUrl || previewImage}
                                                 mockupViews={template?.mockupViews}
-                                                slotAssets={slotAssets}
+                                                slotAssets={isStrictWrapShapeCategory ? {} : slotAssets}
                                                 placeholderShapeBySide={previewShapeBySide}
                                                 wrapType={template?.wrapType || (() => {
                                                     const cat = (template.category || '').toLowerCase();
                                                     if (cat.includes('mug')) return 'mug';
+                                                    if (cat.includes('sipper')) return 'bottle';
                                                     if (cat.includes('bottle')) return 'bottle';
+                                                    if (cat.includes('planter')) return 'planter';
                                                     if (cat.includes('case')) return 'phone';
                                                     return 'mug';
                                                 })()}
@@ -1767,18 +2512,68 @@ const CustomizeProduct = () => {
                             style={{ borderRadius: 20 }}
                             bodyStyle={{ padding: 16, height: '100%', overflow: 'visible' }}
                         >
-                            <div className="shadow-2xl border-[10px] border-white rounded-[2rem] bg-white inline-block">
-                                <canvas ref={canvasRef} />
-                            </div>
-                            <Button
-                                type="secondary"
-                                onClick={handlePreview}
-                                style={{ position: 'absolute', top: 16, right: 16 }}
-                            >
-                                👁️ Preview
-                            </Button>
-
-
+                            {isStrictWrapShapeCategory ? (
+                                <div className="w-full h-full flex flex-col gap-4">
+                                    <div className="flex items-center justify-between px-2">
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Live Product Preview</p>
+                                            <p className="text-sm font-bold text-slate-700">{template.name}</p>
+                                        </div>
+                                        <Button type="secondary" onClick={handlePreview}>
+                                            👁️ Preview
+                                        </Button>
+                                    </div>
+                                    <div className="flex-1 flex items-center justify-center bg-[#202020] rounded-[2rem] p-4">
+                                        <div className="w-full max-w-[540px]">
+                                            <MugWrapPreview
+                                                photoUrl={mugPreviewUrl || previewImage || null}
+                                                mockupViews={template?.mockupViews}
+                                                slotAssets={{}}
+                                                placeholderShapeBySide={previewShapeBySide}
+                                                wrapType={template?.wrapType || (() => {
+                                                    const cat = (template.category || '').toLowerCase();
+                                                    if (cat.includes('mug')) return 'mug';
+                                                    if (cat.includes('sipper')) return 'bottle';
+                                                    if (cat.includes('bottle')) return 'bottle';
+                                                    if (cat.includes('planter')) return 'planter';
+                                                    if (cat.includes('case')) return 'phone';
+                                                    return 'mug';
+                                                })()}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-2">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 self-start">Live Preview</p>
+                                    <div className="flex-1 w-full flex items-center justify-center bg-gray-50/80 rounded-2xl min-h-[350px] border border-gray-100">
+                                        {previewImage ? (
+                                            <img
+                                                src={previewImage}
+                                                alt="Your Design"
+                                                className="max-h-[92%] max-w-[92%] object-contain drop-shadow-2xl transition-all duration-500"
+                                            />
+                                        ) : template?.previewImage ? (
+                                            <img
+                                                src={template.previewImage}
+                                                alt={template.name}
+                                                className="max-h-[92%] max-w-[92%] object-contain drop-shadow-xl"
+                                            />
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center text-slate-300 gap-3 p-8 text-center">
+                                                <span className="text-5xl">🖼️</span>
+                                                <p className="text-sm font-bold">Upload a photo to see preview</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={handlePreview}
+                                        className="px-6 py-3 border border-slate-200 rounded-2xl text-[11px] font-black uppercase tracking-[0.15em] text-slate-600 hover:bg-slate-50 transition-all"
+                                    >
+                                        👁️ Full Preview
+                                    </button>
+                                </div>
+                            )}
                         </Card>
 
                         <Card
@@ -1800,364 +2595,339 @@ const CustomizeProduct = () => {
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex border-b bg-gray-50">
-                                <TabButton name="image" icon="📷" label="Images" />
-                                <TabButton name="text" icon="T" label="Text" />
-                                <TabButton name="emoji" icon="😊" label="Emoji" />
-                            </div>
                             <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-                                {activeTab === 'image' && (
+                                {isStrictWrapShapeCategory ? (
                                     <div className="space-y-4">
-                                        <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-sm mb-4">
-                                            <div className="flex flex-col gap-1 mb-4">
-                                                <p className="text-[11px] font-[900] uppercase tracking-[0.15em] text-indigo-600">Step 1: Choose Photo Shape</p>
-                                                <p className="text-[10px] text-slate-400 font-medium italic">Shape select kare fir photo upload kare.</p>
-                                                <div className="text-[10px] bg-indigo-50 text-indigo-500 p-2.5 rounded-xl mt-2 font-bold flex items-start gap-2 leading-tight">
-                                                    <span className="text-sm mt-[-2px]">💡</span>
-                                                    <span>
-                                                        Click <b>"Select Photo"</b> text to upload. Drag the <b>shape</b> to move/resize.
-                                                    </span>
+                                        <div className="rounded-[1.8rem] bg-[#2a2a2a] text-white p-4 shadow-xl">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div>
+                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">Design Editor</p>
+                                                    <p className="text-[11px] text-gray-400">Layout size (mm): {template.printSize || 'Not set'}</p>
                                                 </div>
+                                                <button
+                                                    onClick={handlePreview}
+                                                    className="px-3 py-2 rounded-xl border border-white/20 bg-white/10 text-[10px] font-black uppercase tracking-wider hover:bg-white/20 transition-all"
+                                                >
+                                                    Preview
+                                                </button>
                                             </div>
 
-                                            <div className="grid grid-cols-4 gap-2">
-                                                {[
-                                                    { key: 'auto', label: 'Auto (Admin)', icon: '✨' },
-                                                    { key: 'heart', label: 'Heart', icon: '❤️' },
-                                                    { key: 'star', label: 'Star', icon: '⭐' },
-                                                    { key: 'rectangle', label: 'Rectangle', icon: '⬜' },
-                                                    { key: 'circle', label: 'Circle', icon: '⭕' },
-                                                    { key: 'mug-wrap', label: 'Wrap', icon: '🥤' }
-                                                ].map((s) => (
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <button
+                                                    onClick={() => cycleEditorSide(-1)}
+                                                    className="w-10 h-10 rounded-xl border border-white/15 bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all"
+                                                >
+                                                    <FaChevronLeft />
+                                                </button>
+                                                <div className="flex-1 text-center py-2 rounded-xl bg-black/20 border border-white/10">
+                                                    <p className="text-[9px] uppercase tracking-[0.2em] text-gray-400">Editing Side</p>
+                                                    <p className="text-sm font-black uppercase">{editorSide}</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => cycleEditorSide(1)}
+                                                    className="w-10 h-10 rounded-xl border border-white/15 bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all"
+                                                >
+                                                    <FaChevronRight />
+                                                </button>
+                                            </div>
+
+                                            <div className="grid grid-cols-3 gap-2 mb-3">
+                                                {editorSides.map((side) => (
                                                     <button
-                                                        key={s.key}
-                                                        onClick={() => applyUploadShapeSelection(s.key)}
-                                                        className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all ${(uploadShapeBySlot?.[getCurrentShapeTarget()] || 'auto') === s.key
-                                                                ? 'bg-indigo-50 border-indigo-600 shadow-sm'
-                                                                : 'bg-gray-50 border-transparent hover:bg-white hover:border-gray-200'
-                                                            }`}
+                                                        key={side}
+                                                        onClick={() => setEditorSide(side)}
+                                                        className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all ${editorSide === side
+                                                            ? 'bg-white text-[#222] border-white'
+                                                            : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'}`}
                                                     >
-                                                        <span className="text-xl mb-1.5">{s.icon}</span>
-                                                        <span className={`text-[8px] font-black uppercase text-center leading-tight ${(uploadShapeBySlot?.[getCurrentShapeTarget()] || 'auto') === s.key ? 'text-indigo-700' : 'text-slate-500'
-                                                            }`}>
-                                                            {s.label}
-                                                        </span>
+                                                        {side}
                                                     </button>
                                                 ))}
                                             </div>
 
-                                            {isWrapProduct && customizationMode === 'wrapPhotos' && (
-                                                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
-                                                    <span className="text-[9px] font-black text-indigo-600 uppercase tracking-wider">Side:</span>
-                                                    <div className="flex-1 grid grid-cols-3 gap-1.5">
-                                                        {['left', 'center', 'right'].map((slot) => (
-                                                            <button
-                                                                key={`target-slot-${slot}`}
-                                                                onClick={() => setShapeTargetSlot(slot)}
-                                                                className={`py-1.5 rounded-lg text-[9px] font-[900] uppercase border-2 transition-all ${shapeTargetSlot === slot ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-400 border-slate-100'}`}
-                                                            >
-                                                                {slot}
-                                                            </button>
-                                                        ))}
+                                            <div className="rounded-[1.5rem] border border-white/10 bg-[#1f1f1f] p-3">
+                                                <div className="rounded-[1rem] bg-[linear-gradient(45deg,#f0f0f0_25%,transparent_25%),linear-gradient(-45deg,#f0f0f0_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#f0f0f0_75%),linear-gradient(-45deg,transparent_75%,#f0f0f0_75%)] bg-[length:20px_20px] bg-[position:0_0,0_10px,10px_-10px,-10px_0px] p-3 flex items-center justify-center min-h-[320px]">
+                                                    <div className="shadow-2xl border-[6px] border-white rounded-[1.2rem] bg-white inline-block max-w-full overflow-auto">
+                                                        <canvas ref={canvasRef} />
                                                     </div>
                                                 </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-3 mt-3">
+                                                <button
+                                                    onClick={handleEditorImageUpload}
+                                                    className="py-3 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 transition-all font-black text-sm flex items-center justify-center gap-2"
+                                                >
+                                                    <FaImage /> Add Image
+                                                </button>
+                                                <button
+                                                    onClick={handleEditorAddText}
+                                                    className="py-3 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 transition-all font-black text-sm flex items-center justify-center gap-2"
+                                                >
+                                                    <FaFont /> Add Text
+                                                </button>
+                                            </div>
+
+                                            <div className="grid grid-cols-3 gap-2 mt-3">
+                                                {['left', 'center', 'right'].map((side) => (
+                                                    <button
+                                                        key={`upload-${side}`}
+                                                        onClick={() => uploadImageForSide(side)}
+                                                        className={`py-2 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all ${editorSide === side
+                                                            ? 'bg-white text-[#222] border-white'
+                                                            : 'bg-white/5 text-gray-300 border-white/15 hover:bg-white/10'}`}
+                                                    >
+                                                        Upload {side}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 mb-2">Editor Notes</p>
+                                            <div className="rounded-xl border border-gray-200 px-3 py-3 text-sm bg-slate-50 text-slate-600">
+                                                `Add Image` current side ke print canvas me image dalega. `Add Text` editable text object canvas me dalega.
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 mt-2">
+                                                Image ko canvas par drag/resize karo. Text par double click ya select karke directly canvas me edit karo.
+                                            </p>
+                                            {currentSideAsset?.imageUrl && (
+                                                <p className="text-[10px] text-green-600 font-bold mt-2 uppercase tracking-wide">
+                                                    Image added on {editorSide}
+                                                </p>
+                                            )}
+                                            {currentSideAsset?.text && (
+                                                <p className="text-[10px] text-indigo-600 font-bold mt-1 uppercase tracking-wide">
+                                                    Text active on {editorSide}
+                                                </p>
                                             )}
                                         </div>
 
-                                        {hasAdminLockedShapes && (
-                                            <div className="p-2 rounded-xl bg-indigo-50 border border-indigo-200">
-                                                <p className="text-[10px] font-black uppercase tracking-wider text-indigo-700 mb-1">Admin Shape Lock</p>
-                                                <p className="text-[10px] text-indigo-600 font-semibold">
-                                                    Preview shape follows admin side settings (front/left/right) exactly.
-                                                </p>
-                                            </div>
-                                        )}
-                                        {isWrapProduct && (
-                                            <div className="grid grid-cols-1 gap-2 p-2 rounded-xl bg-white border border-gray-200">
-                                                <button
-                                                    onClick={() => setCustomizationMode('singlePhotoBothSides')}
-                                                    className={`py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${customizationMode === 'singlePhotoBothSides' ? 'bg-indigo-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-                                                >
-                                                    1) Single Photo Both Sides
-                                                </button>
-                                                <button
-                                                    onClick={() => setCustomizationMode('photoAndText')}
-                                                    className={`py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${customizationMode === 'photoAndText' ? 'bg-indigo-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-                                                >
-                                                    2) One Side Photo + Other Side Text
-                                                </button>
-                                                <button
-                                                    onClick={() => setCustomizationMode('wrapPhotos')}
-                                                    className={`py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${customizationMode === 'wrapPhotos' ? 'bg-indigo-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-                                                >
-                                                    3) Wrap with 1/2/3 Photos
-                                                </button>
-                                            </div>
-                                        )}
+                                        {selectedObject && (
+                                            <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Selected Layer Tools</p>
 
-                                        {(!isWrapProduct || customizationMode === 'singlePhotoBothSides') && (
-                                            <>
-                                                <button onClick={() => { setActiveUploadSlot('center'); fileInputRef.current.click(); }} className="w-full border-2 border-dashed border-indigo-400 py-4.5 rounded-xl text-indigo-600 hover:bg-indigo-50 font-black shadow-sm tracking-wide text-sm flex items-center justify-center gap-2 transition-all">
-                                                    📷 Upload One Photo <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full ml-1 font-bold">(Auto Both Sides)</span>
-                                                </button>
-                                            </>
-                                        )}
+                                                {selectedObject.role === 'clipped-image' && (
+                                                    <div className="pb-4 border-b border-slate-100">
+                                                        <label className="flex justify-between items-center text-[10px] font-black text-indigo-600 uppercase mb-2">
+                                                            <span>Photo Zoom</span>
+                                                            <span>{Math.round((selectedObject.scaleX / (selectedObject.maskRef?.getScaledWidth() / selectedObject.width)) * 100)}%</span>
+                                                        </label>
+                                                        <input
+                                                            type="range"
+                                                            min="1"
+                                                            max="3"
+                                                            step="0.01"
+                                                            className="w-full account-slider accent-indigo-600"
+                                                            value={selectedObject.scaleX / (selectedObject.maskRef?.getScaledWidth() / selectedObject.width)}
+                                                            onChange={(e) => {
+                                                                const zoom = parseFloat(e.target.value);
+                                                                const mask = selectedObject.maskRef;
+                                                                const mW = mask.getScaledWidth();
+                                                                const mH = mask.getScaledHeight();
+                                                                const minScaleX = mW / selectedObject.width;
+                                                                const minScaleY = mH / selectedObject.height;
+                                                                const minScale = Math.max(minScaleX, minScaleY);
+                                                                const newScale = minScale * zoom;
+                                                                selectedObject.set({ scaleX: newScale, scaleY: newScale });
+                                                                handleImageTransformation({ target: selectedObject });
+                                                                canvas.renderAll();
+                                                            }}
+                                                        />
+                                                    </div>
+                                                )}
 
-                                        {isWrapProduct && customizationMode === 'photoAndText' && (
-                                            <div className="space-y-3">
-                                                <button onClick={() => { setActiveUploadSlot(photoSide); fileInputRef.current.click(); }} className="w-full border-2 border-dashed border-indigo-400 py-4 rounded-xl text-indigo-600 hover:bg-indigo-50 font-black shadow-sm tracking-wide text-sm flex items-center justify-center gap-2 transition-all">
-                                                    📷 Upload Photo Side
-                                                </button>
-                                                <div className="grid grid-cols-3 gap-2">
+                                                {(selectedObject.type === 'i-text' || selectedObject.type === 'text') && (
+                                                    <div className="space-y-3">
+                                                        <textarea
+                                                            value={selectedObject.text || ''}
+                                                            onChange={(e) => {
+                                                                selectedObject.set('text', e.target.value);
+                                                                canvas.renderAll();
+                                                                if (selectedObject.role === 'side-text') {
+                                                                    const slot = selectedObject.sideSlot || 'center';
+                                                                    setPhotoTextValue(e.target.value);
+                                                                    setSlotAssets((prev) => ({
+                                                                        ...prev,
+                                                                        [slot]: { ...prev[slot], text: e.target.value }
+                                                                    }));
+                                                                }
+                                                            }}
+                                                            rows={3}
+                                                            className="w-full border p-3 rounded-xl"
+                                                        />
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <input
+                                                                type="color"
+                                                                value={selectedObject.fill || '#000000'}
+                                                                onChange={(e) => {
+                                                                    selectedObject.set('fill', e.target.value);
+                                                                    canvas.renderAll();
+                                                                }}
+                                                                className="w-full h-11 rounded-xl border cursor-pointer"
+                                                            />
+                                                            <input
+                                                                type="number"
+                                                                min="8"
+                                                                max="200"
+                                                                value={selectedObject.fontSize || 24}
+                                                                onChange={(e) => {
+                                                                    selectedObject.set('fontSize', Number(e.target.value));
+                                                                    canvas.renderAll();
+                                                                }}
+                                                                className="w-full border p-2 rounded-xl"
+                                                            />
+                                                        </div>
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                            <button
+                                                                onClick={() => {
+                                                                    selectedObject.set('fontWeight', selectedObject.fontWeight === 'bold' ? 'normal' : 'bold');
+                                                                    canvas.renderAll();
+                                                                }}
+                                                                className="p-2 rounded-xl border text-xs font-black"
+                                                            >
+                                                                Bold
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    selectedObject.set('fontStyle', selectedObject.fontStyle === 'italic' ? 'normal' : 'italic');
+                                                                    canvas.renderAll();
+                                                                }}
+                                                                className="p-2 rounded-xl border text-xs font-black"
+                                                            >
+                                                                Italic
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (typeof selectedObject.enterEditing === 'function') selectedObject.enterEditing();
+                                                                    canvas.setActiveObject(selectedObject);
+                                                                    canvas.renderAll();
+                                                                }}
+                                                                className="p-2 rounded-xl border text-xs font-black"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                <div className="grid grid-cols-1 gap-2">
                                                     <button
-                                                        onClick={() => setPhotoSide('left')}
-                                                        className={`py-2 rounded-lg text-xs font-bold border transition-all ${photoSide === 'left' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200'}`}
+                                                        onClick={() => { canvas.remove(selectedObject); setSelectedObject(null); canvas.renderAll(); }}
+                                                        className="p-3 bg-red-50 text-[10px] font-black uppercase text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-all"
                                                     >
-                                                        Photo on Left
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setPhotoSide('center')}
-                                                        className={`py-2 rounded-lg text-xs font-bold border transition-all ${photoSide === 'center' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200'}`}
-                                                    >
-                                                        Photo on Center
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setPhotoSide('right')}
-                                                        className={`py-2 rounded-lg text-xs font-bold border transition-all ${photoSide === 'right' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200'}`}
-                                                    >
-                                                        Photo on Right
+                                                        Remove Selected
                                                     </button>
                                                 </div>
-                                                <div className="grid grid-cols-3 gap-2">
-                                                    <button
-                                                        onClick={() => setTextSide('left')}
-                                                        className={`py-2 rounded-lg text-xs font-bold border transition-all ${textSide === 'left' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}`}
-                                                    >
-                                                        Text on Left
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setTextSide('center')}
-                                                        className={`py-2 rounded-lg text-xs font-bold border transition-all ${textSide === 'center' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}`}
-                                                    >
-                                                        Text on Center
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setTextSide('right')}
-                                                        className={`py-2 rounded-lg text-xs font-bold border transition-all ${textSide === 'right' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}`}
-                                                    >
-                                                        Text on Right
-                                                    </button>
-                                                </div>
-                                                <textarea
-                                                    value={photoTextValue}
-                                                    onChange={(e) => setPhotoTextValue(e.target.value)}
-                                                    placeholder="Type text for opposite side..."
-                                                    rows={3}
-                                                    className="w-full border p-2 rounded-lg text-sm"
-                                                />
-                                                <button
-                                                    onClick={upsertSideText}
-                                                    className="w-full bg-slate-900 text-white py-3 rounded-xl hover:bg-slate-700 font-black tracking-[0.08em] uppercase text-xs"
-                                                >
-                                                    Apply Text on {textSide}
-                                                </button>
                                             </div>
                                         )}
-
-                                        {isWrapProduct && customizationMode === 'wrapPhotos' && (
-                                            <>
-                                                <button onClick={() => { setActiveUploadSlot('center'); fileInputRef.current.click(); }} className="w-full border-2 border-dashed border-indigo-400 py-4.5 rounded-xl text-indigo-600 hover:bg-indigo-50 font-black shadow-sm tracking-wide text-sm flex items-center justify-center gap-2 transition-all">
-                                                    📷 Wrap Photo 1 <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full ml-1 font-bold">(Front)</span>
-                                                </button>
-                                                <button onClick={() => { setActiveUploadSlot('left'); fileInputRef.current.click(); }} className="w-full border-2 border-dashed border-blue-400 py-4.5 rounded-xl text-blue-600 hover:bg-blue-50 font-black shadow-sm tracking-wide text-sm flex items-center justify-center gap-2 transition-all">
-                                                    📷 Wrap Photo 2 <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full ml-1 font-bold">(Left)</span>
-                                                </button>
-                                                <button onClick={() => { setActiveUploadSlot('right'); fileInputRef.current.click(); }} className="w-full border-2 border-dashed border-teal-400 py-4.5 rounded-xl text-teal-600 hover:bg-teal-50 font-black shadow-sm tracking-wide text-sm flex items-center justify-center gap-2 transition-all">
-                                                    📷 Wrap Photo 3 <span className="text-[10px] bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full ml-1 font-bold">(Right)</span>
-                                                </button>
-                                                <p className="text-[11px] text-gray-500 font-semibold text-center">
-                                                    1, 2 ya 3 photos upload karo — preview me front, left aur right views automatically dikhengi.
-                                                </p>
-                                            </>
-                                        )}
-
-                                        <div className="relative flex py-2 items-center">
-                                            <div className="flex-grow border-t border-gray-200"></div>
-                                            <span className="flex-shrink-0 mx-4 text-gray-400 text-xs font-black tracking-widest uppercase">Or</span>
-                                            <div className="flex-grow border-t border-gray-200"></div>
-                                        </div>
-
-                                        <button onClick={() => setActiveTab('text')} className="w-full bg-[#1e293b] text-white py-4 rounded-xl hover:bg-slate-700 font-black tracking-[0.1em] uppercase text-xs shadow-md transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5">
-                                            📝 Add Custom Text
-                                        </button>
 
                                         <input type="file" ref={fileInputRef} hidden onChange={handleImageUpload} />
                                     </div>
-                                )}
-                                {activeTab === 'text' && (
-                                    <div className="space-y-4">
-                                        <button onClick={() => addToCanvas(new fabric.IText('Your Text', { fontFamily: 'Arial', fontSize: 24, fill: '#000000' }))} className="w-full bg-white border py-3 rounded hover:bg-gray-100 font-serif text-lg">Add Heading</button>
-                                        {selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'text') && (
-                                            <div className="p-4 bg-white border rounded space-y-3">
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-600 mb-1 block">Text Color</label>
-                                                    <input
-                                                        type="color"
-                                                        value={selectedObject.fill || '#000000'}
-                                                        onChange={(e) => {
-                                                            selectedObject.set('fill', e.target.value);
-                                                            canvas.renderAll();
-                                                        }}
-                                                        className="w-full h-10 rounded border cursor-pointer"
-                                                    />
+                                ) : (
+                                    <>
+                                        {/* ── Design Canvas ────────────────────────────────────────── */}
+                                        <div className="bg-[#181818] rounded-2xl p-3 mb-4 -mx-4 -mt-4">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <p className="text-[10px] text-gray-400 font-black uppercase tracking-wider">
+                                                    Design Canvas{printSizeMm ? ` • ${Math.round(printSizeMm.widthMm)}×${Math.round(printSizeMm.heightMm)}mm` : ''}
+                                                </p>
+                                                <p className="text-[9px] text-gray-500">Drag &amp; resize to edit</p>
+                                            </div>
+                                            <div className="bg-[linear-gradient(45deg,#f0f0f0_25%,transparent_25%),linear-gradient(-45deg,#f0f0f0_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#f0f0f0_75%),linear-gradient(-45deg,transparent_75%,#f0f0f0_75%)] bg-[length:20px_20px] bg-[position:0_0,0_10px,10px_-10px,-10px_0px] rounded-xl flex items-center justify-center p-2 min-h-[260px] overflow-auto">
+                                                <div className="shadow-xl border-4 border-white rounded-xl bg-white inline-block">
+                                                    <canvas ref={canvasRef} />
                                                 </div>
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-600 mb-1 block">Font Size</label>
-                                                    <input
-                                                        type="number"
-                                                        min="8"
-                                                        max="200"
-                                                        value={selectedObject.fontSize || 24}
-                                                        onChange={(e) => {
-                                                            selectedObject.set('fontSize', Number(e.target.value));
-                                                            canvas.renderAll();
-                                                        }}
-                                                        className="w-full border p-2 rounded"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-600 mb-1 block">Font Style</label>
-                                                    <select
-                                                        value={selectedObject.fontFamily || 'Arial'}
-                                                        onChange={(e) => {
-                                                            selectedObject.set('fontFamily', e.target.value);
-                                                            canvas.renderAll();
-                                                        }}
-                                                        className="w-full border p-2 rounded"
-                                                    >
-                                                        <option value="Arial">Arial</option>
-                                                        <option value="Times New Roman">Times New Roman</option>
-                                                        <option value="Courier New">Courier New</option>
-                                                        <option value="Georgia">Georgia</option>
-                                                        <option value="Verdana">Verdana</option>
-                                                        <option value="Impact">Impact</option>
-                                                        <option value="Comic Sans MS">Comic Sans MS</option>
-                                                        <option value="Roboto">Roboto</option>
-                                                        <option value="Open Sans">Open Sans</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-bold text-gray-600 mb-2 block">Text Formatting</label>
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => {
-                                                                const isBold = selectedObject.fontWeight === 'bold';
-                                                                selectedObject.set('fontWeight', isBold ? 'normal' : 'bold');
-                                                                canvas.renderAll();
-                                                            }}
-                                                            className={`flex-1 p-2 border rounded text-sm font-semibold ${selectedObject.fontWeight === 'bold'
-                                                                ? 'bg-blue-500 text-white'
-                                                                : 'bg-gray-50 hover:bg-gray-100'
-                                                                }`}
-                                                        >
-                                                            <strong>B</strong>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => {
-                                                                const isItalic = selectedObject.fontStyle === 'italic';
-                                                                selectedObject.set('fontStyle', isItalic ? 'normal' : 'italic');
-                                                                canvas.renderAll();
-                                                            }}
-                                                            className={`flex-1 p-2 border rounded text-sm ${selectedObject.fontStyle === 'italic'
-                                                                ? 'bg-blue-500 text-white italic'
-                                                                : 'bg-gray-50 hover:bg-gray-100'
-                                                                }`}
-                                                        >
-                                                            <em>I</em>
-                                                        </button>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                                <button
+                                                    onClick={() => { setActiveUploadSlot('center'); fileInputRef.current.click(); }}
+                                                    className="py-2.5 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 transition-all text-white text-xs font-black flex items-center justify-center gap-2"
+                                                >
+                                                    📷 Add Image
+                                                </button>
+                                                <button
+                                                    onClick={() => addToCanvas(new fabric.IText('Your Text', { fontFamily: 'Arial', fontSize: 24, fill: '#1e293b' }))}
+                                                    className="py-2.5 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 transition-all text-white text-xs font-black flex items-center justify-center gap-2"
+                                                >
+                                                    T Add Text
+                                                </button>
+                                            </div>
+                                            {/* Text controls when text object selected */}
+                                            {selectedObject && (selectedObject.type === 'i-text' || selectedObject.type === 'text') && (
+                                                <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                                                    <p className="text-[9px] text-gray-400 font-black uppercase">Text Settings</p>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <input
+                                                            type="color"
+                                                            value={selectedObject.fill || '#000000'}
+                                                            onChange={(e) => { selectedObject.set('fill', e.target.value); canvas.renderAll(); }}
+                                                            className="w-full h-9 rounded-xl border-0 cursor-pointer"
+                                                        />
+                                                        <input
+                                                            type="number" min="8" max="200"
+                                                            value={selectedObject.fontSize || 24}
+                                                            onChange={(e) => { selectedObject.set('fontSize', Number(e.target.value)); canvas.renderAll(); }}
+                                                            className="w-full text-black px-2 rounded-xl text-sm border bg-white"
+                                                        />
+                                                    </div>
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        <button onClick={() => { selectedObject.set('fontWeight', selectedObject.fontWeight === 'bold' ? 'normal' : 'bold'); canvas.renderAll(); }} className="py-1.5 rounded-lg bg-white/10 text-white text-[10px] font-black">Bold</button>
+                                                        <button onClick={() => { selectedObject.set('fontStyle', selectedObject.fontStyle === 'italic' ? 'normal' : 'italic'); canvas.renderAll(); }} className="py-1.5 rounded-lg bg-white/10 text-white text-[10px] font-black">Italic</button>
+                                                        <button onClick={() => { canvas.remove(selectedObject); setSelectedObject(null); canvas.renderAll(); }} className="py-1.5 rounded-lg bg-red-500/30 text-red-300 text-[10px] font-black">Delete</button>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                {activeTab === 'emoji' && (
-                                    <EmojiPicker onEmojiClick={(d) => addToCanvas(new fabric.IText(d.emoji, { fontSize: 50 }))} width="100%" height={350} />
-                                )}
-                                {selectedObject && (
-                                    <div className="mt-6 p-5 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Design Tools</p>
-
-                                        {selectedObject.role === 'clipped-image' && (
-                                            <div className="pb-4 border-b border-slate-100 italic">
-                                                <label className="flex justify-between items-center text-[10px] font-black text-indigo-600 uppercase mb-2">
-                                                    <span>Photo Zoom</span>
-                                                    <span>{Math.round((selectedObject.scaleX / (selectedObject.maskRef?.getScaledWidth() / selectedObject.width)) * 100)}%</span>
-                                                </label>
-                                                <input
-                                                    type="range"
-                                                    min="1"
-                                                    max="3"
-                                                    step="0.01"
-                                                    className="w-full account-slider accent-indigo-600"
-                                                    value={selectedObject.scaleX / (selectedObject.maskRef?.getScaledWidth() / selectedObject.width)}
-                                                    onChange={(e) => {
-                                                        const zoom = parseFloat(e.target.value);
-                                                        const mask = selectedObject.maskRef;
-                                                        const mW = mask.getScaledWidth();
-                                                        const mH = mask.getScaledHeight();
-                                                        const minScaleX = mW / selectedObject.width;
-                                                        const minScaleY = mH / selectedObject.height;
-                                                        const minScale = Math.max(minScaleX, minScaleY);
-                                                        const newScale = minScale * zoom;
-
-                                                        selectedObject.set({ scaleX: newScale, scaleY: newScale });
-                                                        // Trigger constraint logic to keep it centered if needed
-                                                        handleImageTransformation({ target: selectedObject });
-                                                        canvas.renderAll();
-                                                    }}
-                                                />
-                                                <p className="text-[9px] text-slate-400 mt-2">
-                                                    Tip: Zoom in to move the photo left or right.
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* Fill with Image for Shape Placeholders */}
-                                        {selectedObject.role === 'shape-placeholder' && (
-                                            <button
-                                                onClick={() => {
-                                                    // Mark the selected object as the target for the next upload
-                                                    canvas.activePlaceholder = selectedObject;
-                                                    fileInputRef.current.click();
-                                                }}
-                                                className="w-full py-3 bg-indigo-600 text-white text-[11px] font-[900] uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 mb-2"
-                                            >
-                                                📷 Fill with Photo
-                                            </button>
-                                        )}
-
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <button
-                                                onClick={() => { canvas.bringToFront(selectedObject); if (canvas.overlayImage) canvas.bringToFront(canvas.overlayImage); canvas.renderAll(); }}
-                                                className="p-2.5 bg-white text-[10px] font-black uppercase text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-100 transition-all"
-                                            >
-                                                Front
-                                            </button>
-                                            <button
-                                                onClick={() => { canvas.sendToBack(selectedObject); if (canvas.productImage) canvas.sendToBack(canvas.productImage); canvas.renderAll(); }}
-                                                className="p-2.5 bg-white text-[10px] font-black uppercase text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-100 transition-all"
-                                            >
-                                                Back
-                                            </button>
-                                            <button
-                                                onClick={() => { canvas.remove(selectedObject); setSelectedObject(null); canvas.renderAll(); }}
-                                                className="p-2.5 bg-red-50 text-[10px] font-black uppercase text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-all"
-                                            >
-                                                Remove
-                                            </button>
+                                            )}
+                                            {/* Image zoom/delete controls when image selected */}
+                                            {selectedObject && (selectedObject.role === 'clipped-image' || selectedObject.role === 'free-image') && (
+                                                <div className="mt-3 border-t border-white/10 pt-3">
+                                                    <label className="text-[9px] text-gray-400 font-black uppercase mb-1 block">Image Zoom</label>
+                                                    <input
+                                                        type="range" min="1" max="5" step="0.01"
+                                                        className="w-full accent-indigo-400"
+                                                        value={selectedObject.role === 'clipped-image' && selectedObject.maskRef
+                                                            ? (selectedObject.scaleX / Math.max(0.001, selectedObject.maskRef.getScaledWidth() / selectedObject.width))
+                                                            : (selectedObject.scaleX || 1)}
+                                                        onChange={(e) => {
+                                                            const v = parseFloat(e.target.value);
+                                                            if (selectedObject.role === 'clipped-image' && selectedObject.maskRef) {
+                                                                const mW = selectedObject.maskRef.getScaledWidth();
+                                                                const mH = selectedObject.maskRef.getScaledHeight();
+                                                                const minS = Math.max(mW / selectedObject.width, mH / selectedObject.height);
+                                                                selectedObject.set({ scaleX: minS * v, scaleY: minS * v });
+                                                            } else {
+                                                                selectedObject.set({ scaleX: v, scaleY: v });
+                                                            }
+                                                            canvas.renderAll();
+                                                        }}
+                                                    />
+                                                    <button
+                                                        onClick={() => { canvas.remove(selectedObject); setSelectedObject(null); canvas.renderAll(); }}
+                                                        className="mt-2 w-full py-1.5 rounded-lg bg-red-500/30 text-red-300 text-[10px] font-black"
+                                                    >Remove Image</button>
+                                                </div>
+                                            )}
+                                            <input type="file" ref={fileInputRef} hidden onChange={handleImageUpload} />
                                         </div>
-                                    </div>
+                                        {/* ── Emoji section ────────────────────────────────────────── */}
+                                        <div className="flex border-b bg-gray-50 -mx-4 mb-4">
+                                            <TabButton name="image" icon="📷" label="Upload More" />
+                                            <TabButton name="emoji" icon="😊" label="Emoji" />
+                                        </div>
+                                        {activeTab === 'image' && (
+                                            <div className="space-y-3">
+                                                <button
+                                                    onClick={() => { setActiveUploadSlot('center'); fileInputRef.current.click(); }}
+                                                    className="w-full border-2 border-dashed border-indigo-400 py-4 rounded-xl text-indigo-600 hover:bg-indigo-50 font-black text-sm flex items-center justify-center gap-2 transition-all"
+                                                >
+                                                    📷 Upload Another Photo
+                                                </button>
+                                            </div>
+                                        )}
+                                        {activeTab === 'emoji' && (
+                                            <EmojiPicker onEmojiClick={(d) => addToCanvas(new fabric.IText(d.emoji, { fontSize: 50 }))} width="100%" height={300} />
+                                        )}
+                                    </>
                                 )}
                             </div>
 
@@ -2241,7 +3011,7 @@ const CustomizeProduct = () => {
                 </Content>
             </Layout>
 
-            {previewModalOpen && <PreviewModal />}
+            {previewModalOpen && PreviewModal()}
         </>
     );
 };

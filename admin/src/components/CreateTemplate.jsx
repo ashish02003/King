@@ -785,15 +785,16 @@ const CreateTemplate = () => {
 
     // Helper to create the authentic "Mug Smile" curve path
     const createMugSmilePath = (w, h, curve = 25) => {
-        // M top-left, Q control-point(center-lower), end(top-right)
-        // L side-right-bottom, Q control-point(center-lower), end(bottom-left)
-        return `M 0 ${curve} Q ${w / 2} ${curve * 2.5} ${w} ${curve} L ${w} ${h} Q ${w / 2} ${h + curve * 1.5} 0 ${h} Z`;
+        // Perfect cylinder bounding match: 
+        // Top sides at y=0, dipping to y=curve in middle.
+        // Bottom sides at y=h-curve, dipping to y=h in middle.
+        return `M 0 0 Q ${w / 2} ${curve * 2} ${w} 0 L ${w} ${h - curve} Q ${w / 2} ${h + curve} 0 ${h - curve} Z`;
     };
 
     /** Same mug-wrap path in 0–100 SVG space (mockup overlay preview) */
     const createMugSmilePathPct = (x, y, w, h, curve = 35) => {
         const c = Math.min(Math.max(Number(curve) || 35, 1), h * 0.45);
-        return `M ${x} ${y + c} Q ${x + w / 2} ${y + c * 2.5} ${x + w} ${y + c} L ${x + w} ${y + h} Q ${x + w / 2} ${y + h + c * 1.5} ${x} ${y + h} Z`;
+        return `M ${x} ${y} Q ${x + w / 2} ${y + c * 2} ${x + w} ${y} L ${x + w} ${y + h - c} Q ${x + w / 2} ${y + h + c} ${x} ${y + h - c} Z`;
     };
 
     const createHeartPathPct = (x, y, w, h) => {
@@ -1751,7 +1752,7 @@ const CreateTemplate = () => {
         if (!placeholders.length) return {};
         const norm = (shape) => (shape === 'rect' ? 'rectangle' : shape || 'rectangle');
         const primaryWrap = placeholders.find((p) => norm(p.shapeType) === 'mug-wrap');
-        if (primaryWrap && (wrapType === 'mug' || wrapType === 'bottle')) {
+        if (primaryWrap && (wrapType === 'mug' || wrapType === 'bottle' || wrapType === 'planter')) {
             const wrapShape = norm(primaryWrap.shapeType);
             return { left: wrapShape, center: wrapShape, right: wrapShape };
         }
@@ -1797,7 +1798,7 @@ const CreateTemplate = () => {
         };
         const norm = (shape) => (shape === 'rect' ? 'rectangle' : shape || 'rectangle');
         const primaryWrap = placeholders.find((p) => norm(p.shapeType) === 'mug-wrap');
-        if (primaryWrap && (wrapType === 'mug' || wrapType === 'bottle')) {
+        if (primaryWrap && (wrapType === 'mug' || wrapType === 'bottle' || wrapType === 'planter')) {
             const p = toPlacement(primaryWrap);
             return { left: p, center: p, right: p };
         }
@@ -2540,7 +2541,7 @@ const CreateTemplate = () => {
             const sideShapeFromCanvas = (() => {
                 const norm = (shape) => (shape === 'rect' ? 'rectangle' : shape || 'rectangle');
                 const primaryWrap = sortedPlaceholdersForSides.find((p) => norm(p.shapeType) === 'mug-wrap');
-                if (primaryWrap && (wrapType === 'mug' || wrapType === 'bottle')) {
+                if (primaryWrap && (wrapType === 'mug' || wrapType === 'bottle' || wrapType === 'planter')) {
                     const wrapShape = norm(primaryWrap.shapeType);
                     return { left: wrapShape, center: wrapShape, right: wrapShape };
                 }
@@ -2587,7 +2588,7 @@ const CreateTemplate = () => {
                 };
                 const norm = (shape) => (shape === 'rect' ? 'rectangle' : shape || 'rectangle');
                 const primaryWrap = sortedPlaceholdersForSides.find((p) => norm(p.shapeType) === 'mug-wrap');
-                if (primaryWrap && (wrapType === 'mug' || wrapType === 'bottle')) {
+                if (primaryWrap && (wrapType === 'mug' || wrapType === 'bottle' || wrapType === 'planter')) {
                     const p = toPlacement(primaryWrap);
                     return { left: p, center: p, right: p };
                 }
@@ -2610,6 +2611,15 @@ const CreateTemplate = () => {
                 };
             })();
 
+            const strictWrapOnly = wrapType === 'mug' || wrapType === 'bottle' || wrapType === 'planter';
+            if (strictWrapOnly) {
+                const invalidPlaceholder = sortedPlaceholdersForSides.find((p) => (p.shapeType || '') !== 'mug-wrap');
+                if (invalidPlaceholder) {
+                    toast.error('Mug / Sipper-Bottle / Planter me sirf mug-wrap placeholder allowed hai.');
+                    return;
+                }
+            }
+
             const normalizedMockupViews = MOCKUP_SIDES.map(({ key: side }) => {
                 const mv = (mockupViews || []).find((item) => (item.side || item.angleFocus || 'center') === side);
                 if (!mv?.backgroundUrl) return null;
@@ -2620,14 +2630,14 @@ const CreateTemplate = () => {
                     angleFocus: side,
                     // IMPORTANT: Keep mockup-side edits as source of truth.
                     // Canvas placement/shape is only a fallback when mockup side is not customized yet.
-                    shapeType: mv.shapeType || sideShapeFromCanvas[side] || 'rectangle',
+                    shapeType: strictWrapOnly ? 'mug-wrap' : (mv.shapeType || sideShapeFromCanvas[side] || 'rectangle'),
                     placement: mv.placement || autoPlacement,
                     customPath: mv.customPath || autoPlacement?.customPath
                 };
             }).filter(Boolean);
 
             // For mug/bottle templates, enforce complete 3-side preview setup.
-            const needsThreeSidePreview = wrapType === 'mug' || wrapType === 'bottle';
+            const needsThreeSidePreview = wrapType === 'mug' || wrapType === 'bottle' || wrapType === 'planter';
             if (needsThreeSidePreview) {
                 const missingSides = MOCKUP_SIDES
                     .map(({ key }) => key)
@@ -3223,7 +3233,7 @@ const CreateTemplate = () => {
                                                                 </span>
                                                             </div>
                                                             <div className="flex gap-1">
-                                                                {(wrapType === 'mug' || wrapType === 'bottle') && (
+                                                                {(wrapType === 'mug' || wrapType === 'bottle' || wrapType === 'planter') && (
                                                                     <button
                                                                         onClick={() => applyAutoMugWrapFromCenter(side.key)}
                                                                         className="px-2 py-0.5 text-[7px] font-black uppercase rounded bg-purple-100 text-purple-700 hover:bg-purple-200"
@@ -3400,6 +3410,7 @@ const CreateTemplate = () => {
                                                     <option value="none">Flat Preview</option>
                                                     <option value="mug">☕ 3D Mug Model</option>
                                                     <option value="bottle">🫙 Sipper Bottle</option>
+                                                    <option value="planter">🪴 Planter</option>
                                                 </select>
                                                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">
                                                     <FaArrowDown className="text-[8px]" />

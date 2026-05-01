@@ -14,7 +14,7 @@ import { useEffect, useRef } from 'react';
  * wrapPhotos  : string[]
  * backText    : string
  * bgColor     : string   (hex)
- * wrapType    : 'mug' | 'bottle'
+ * wrapType    : 'mug' | 'bottle' | 'planter'
  * productName : string
  */
 const MugSidePreview = ({
@@ -44,11 +44,12 @@ const MugSidePreview = ({
 
             // Geometry
             const isBottle = wrapType === 'bottle';
-            const mugW = isBottle ? W * 0.52 : W * 0.72;
-            const mugH = isBottle ? H * 0.80 : H * 0.68;
+            const isPlanter = wrapType === 'planter';
+            const mugW = isBottle ? W * 0.52 : (isPlanter ? W * 0.74 : W * 0.72);
+            const mugH = isBottle ? H * 0.80 : (isPlanter ? H * 0.58 : H * 0.68);
             const mugX = (W - mugW) / 2;
-            const mugY = (H - mugH) / 2 + (isBottle ? 5 : 14);
-            const curve = isBottle ? 10 : 22;
+            const mugY = (H - mugH) / 2 + (isBottle ? 5 : (isPlanter ? 20 : 14));
+            const curve = isBottle ? 10 : (isPlanter ? 18 : 22);
 
             const drawBody = (fillFn) => {
                 ctx.beginPath();
@@ -228,11 +229,12 @@ const MugSidePreview = ({
             ctx.clearRect(0, 0, W, H);
 
             const isBottle = wrapType === 'bottle';
-            const mugW = isBottle ? W * 0.52 : W * 0.72;
-            const mugH = isBottle ? H * 0.80 : H * 0.68;
+            const isPlanter = wrapType === 'planter';
+            const mugW = isBottle ? W * 0.52 : (isPlanter ? W * 0.74 : W * 0.72);
+            const mugH = isBottle ? H * 0.80 : (isPlanter ? H * 0.58 : H * 0.68);
             const mugX = (W - mugW) / 2;
-            const mugY = (H - mugH) / 2 + (isBottle ? 5 : 14);
-            const curve = isBottle ? 10 : 22;
+            const mugY = (H - mugH) / 2 + (isBottle ? 5 : (isPlanter ? 20 : 14));
+            const curve = isBottle ? 10 : (isPlanter ? 18 : 22);
 
             const validPhotos = photos.filter(Boolean);
             const count = Math.max(1, validPhotos.length);
@@ -430,7 +432,7 @@ const MugSidePreview = ({
                     Live Product Preview
                 </p>
                 <p className="text-[11px] text-gray-400 font-medium">
-                    {productName} · {wrapType === 'bottle' ? 'Bottle' : 'Mug'} mock-up
+                    {productName} · {wrapType === 'bottle' ? 'Bottle' : wrapType === 'planter' ? 'Planter' : 'Mug'} mock-up
                 </p>
             </div>
 
