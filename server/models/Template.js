@@ -186,7 +186,7 @@ const templateSchema = new mongoose.Schema({
     // 🔥 NEW: Wrap type for cylindrical product preview (mug, bottle, etc.)
     wrapType: {
         type: String,
-        enum: ['none', 'mug', 'bottle', 'phone'],
+        enum: ['none', 'mug', 'bottle', 'planter', 'phone'],
         default: 'none'
     },
 

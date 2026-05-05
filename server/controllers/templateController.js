@@ -1,5 +1,30 @@
 const Template = require('../models/Template');
 
+const deriveWrapTypeFromCategory = (category = '') => {
+    const c = String(category || '').toLowerCase();
+    if (c.includes('mug')) return 'mug';
+    if (c.includes('sipper') || c.includes('bottle')) return 'bottle';
+    if (c.includes('planter')) return 'planter';
+    if (c.includes('cover') || c.includes('case')) return 'phone';
+    return 'none';
+};
+
+const isWrapFamilyCategory = (category = '', wrapType = 'none') => {
+    const c = String(category || '').toLowerCase();
+    return (
+        wrapType === 'mug' ||
+        wrapType === 'bottle' ||
+        wrapType === 'planter' ||
+        c.includes('mug') ||
+        c.includes('sipper') ||
+        c.includes('bottle') ||
+        c.includes('planter')
+    );
+};
+
+const hasInvalidWrapShapes = (mockupViews = []) =>
+    (mockupViews || []).some((mv) => (mv?.shapeType || 'mug-wrap') !== 'mug-wrap');
+
 // @desc    Create a new product template
 // @route   POST /api/templates
 // @access  Private/Admin
@@ -34,6 +59,16 @@ const createTemplate = async (req, res) => {
             mockupViews
         } = req.body;
 
+        const normalizedWrapType = (wrapType && wrapType !== 'none')
+            ? wrapType
+            : deriveWrapTypeFromCategory(category);
+        if (isWrapFamilyCategory(category, normalizedWrapType) && !printSize) {
+            return res.status(400).json({ message: 'Print size is required for Mug / Sipper-Bottle / Planter templates.' });
+        }
+        if (isWrapFamilyCategory(category, normalizedWrapType) && hasInvalidWrapShapes(mockupViews)) {
+            return res.status(400).json({ message: 'Only mug-wrap shape is allowed for Mug / Sipper-Bottle / Planter templates.' });
+        }
+
         const template = await Template.create({
             name,
             category,
@@ -59,7 +94,7 @@ const createTemplate = async (req, res) => {
             benefits: benefits || [],
             galleryImages: galleryImages || [],
             gst: gst || 0,
-            wrapType: wrapType || 'none',
+            wrapType: normalizedWrapType,
             mockupViews: mockupViews || [],
             createdBy: req.user?._id
         });
@@ -145,6 +180,16 @@ const updateTemplate = async (req, res) => {
             mockupViews
         } = req.body;
 
+        const normalizedWrapType = (wrapType && wrapType !== 'none')
+            ? wrapType
+            : deriveWrapTypeFromCategory(category);
+        if (isWrapFamilyCategory(category, normalizedWrapType) && !printSize) {
+            return res.status(400).json({ message: 'Print size is required for Mug / Sipper-Bottle / Planter templates.' });
+        }
+        if (isWrapFamilyCategory(category, normalizedWrapType) && hasInvalidWrapShapes(mockupViews)) {
+            return res.status(400).json({ message: 'Only mug-wrap shape is allowed for Mug / Sipper-Bottle / Planter templates.' });
+        }
+
         const updatedTemplate = await Template.findByIdAndUpdate(
             req.params.id,
             {
@@ -172,7 +217,7 @@ const updateTemplate = async (req, res) => {
                 benefits,
                 galleryImages,
                 gst,
-                wrapType,
+                wrapType: normalizedWrapType,
                 mockupViews
             },
             { new: true, runValidators: true }

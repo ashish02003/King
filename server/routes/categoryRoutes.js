@@ -16,3 +16,4 @@ router.route('/:id')
     .delete(protect, admin, deleteCategory);
 
 module.exports = router;
+
