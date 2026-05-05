@@ -2,13 +2,8 @@ import { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-    FaTrash, FaShoppingBag, FaPlus, FaMinus, FaTag,
-    FaTruck, FaShieldAlt, FaPencilAlt, FaArrowLeft, FaBox
+    FaTrash, FaPlus, FaMinus, FaArrowLeft, FaShieldAlt, FaPencilAlt, FaShoppingBag
 } from 'react-icons/fa';
-import { Layout, Row, Col, Card, Button, Typography, Empty, Modal, Tag as AntTag, Space, Divider } from 'antd';
-
-const { Content } = Layout;
-const { Title, Text } = Typography;
 
 const Cart = () => {
     const { cartItems, selectedItemIds, toggleSelection, getSelectedItems, removeFromCart, updateQuantity, loading } = useCart();
@@ -17,7 +12,6 @@ const Cart = () => {
 
     const selectedItems = getSelectedItems();
 
-    // Subtotal of SELECTED items
     const subtotal = selectedItems.reduce((acc, item) => acc + ((item.price * (1 + (item.gst || 0) / 100)) * (item.quantity || 1)), 0);
     const packingChargesTotal = selectedItems.reduce((acc, item) => acc + ((item.packingCharges || 0) * (item.quantity || 1)), 0);
     const shippingChargesTotal = selectedItems.reduce((acc, item) => acc + (item.shippingCharges || 0), 0);
@@ -37,10 +31,6 @@ const Cart = () => {
         setRemoveModal({ isOpen: false, itemId: null, itemName: '' });
     };
 
-    const handleCancelRemove = () => {
-        setRemoveModal({ isOpen: false, itemId: null, itemName: '' });
-    };
-
     const handleQtyChange = (item, delta) => {
         const newQty = (item.quantity || 1) + delta;
         if (newQty >= 1) {
@@ -50,294 +40,189 @@ const Cart = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">Loading your cart...</p>
-                </div>
+            <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+                <div className="w-10 h-10 border-3 border-gold border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
     }
 
     return (
-        <Layout style={{ minHeight: '100vh', background: '#1A0F2E' }}>
-            <Content style={{ padding: '40px 16px' }}>
-                <div className="container mx-auto max-w-6xl">
-                    <Space align="center" size="large" style={{ marginBottom: 32 }}>
-                        <Button
-                            type="default"
-                            shape="circle"
-                            icon={<FaArrowLeft />}
+        <div className="min-h-screen bg-primary-dark pt-28 pb-20">
+            <div className="max-w-7xl mx-auto px-6 md:px-12">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+                    <div className="space-y-3">
+                        <button
                             onClick={() => navigate(-1)}
-                            className="shadow-sm border-gray-200"
-                        />
-                        <div>
-                            <h1 className="text-3xl font-black text-white tracking-tight m-0">Shopping Cart</h1>
-                            <Text style={{ color: '#A189CC', fontWeight: 500 }}>
-                                {selectedItems.length} of {cartItems.length} items selected for checkout
-                            </Text>
+                            className="flex items-center gap-2 text-[11px] font-semibold text-white/40 uppercase tracking-[0.15em] hover:text-gold transition-colors group"
+                        >
+                            <FaArrowLeft size={10} className="group-hover:-translate-x-1 transition-transform" />
+                            <span>Continue Shopping</span>
+                        </button>
+                        <h1 className="text-4xl font-serif text-white">Your Cart</h1>
+                        <p className="text-white/40 text-sm">
+                            {selectedItems.length} of {cartItems.length} items selected for checkout
+                        </p>
+                    </div>
+                </div>
+
+                {cartItems.length === 0 ? (
+                    <div className="luxury-card p-16 text-center space-y-6 animate-fadeIn">
+                        <div className="w-16 h-16 bg-gold/10 rounded-full flex items-center justify-center mx-auto text-gold">
+                            <FaShoppingBag size={24} />
                         </div>
-                    </Space>
-
-                    <Modal
-                        open={removeModal.isOpen}
-                        title="Remove item?"
-                        onOk={handleConfirmRemove}
-                        onCancel={handleCancelRemove}
-                        okText="Yes, remove"
-                        cancelText="Keep item"
-                        okButtonProps={{ danger: true, className: "rounded-lg" }}
-                        cancelButtonProps={{ className: "rounded-lg" }}
-                    >
-                        <Text>
-                            Are you sure you want to remove{' '}
-                            <Text strong>"{removeModal.itemName}"</Text> from your cart?
-                        </Text>
-                    </Modal>
-
-                    {cartItems.length === 0 ? (
-                        <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden">
-                            <Empty
-                                image={<FaShoppingBag size={60} className="text-blue-100 mx-auto mb-4" />}
-                                description={
-                                    <Space direction="vertical">
-                                        <Text strong className="text-xl">Your cart is empty</Text>
-                                        <Text type="secondary">Start customizing products to add them here</Text>
-                                    </Space>
-                                }
-                            >
-                                <Link to="/">
-                                    <Button type="primary" size="large" className="bg-indigo-600 border-indigo-600 rounded-xl h-12 px-8 font-bold">
-                                        Browse Products
-                                    </Button>
-                                </Link>
-                            </Empty>
-                        </Card>
-                    ) : (
-                        <Row gutter={24} align="stretch">
-                            <Col xs={24} lg={16}>
-                                <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                                    {cartItems.map((item) => {
-                                        const isSelected = selectedItemIds.includes(item._id);
-                                        return (
-                                            <Card
-                                                key={item._id}
-                                                className={`rounded-3xl border-gray-100 shadow-sm transition-all duration-300 ${isSelected ? 'ring-2 ring-indigo-500/20 bg-white' : 'opacity-70 grayscale-[0.5] bg-gray-50'}`}
-                                                bodyStyle={{ padding: '24px' }}
-                                            >
-                                                <div className="flex gap-4 sm:gap-6 items-start">
-                                                    {/* Checkbox */}
-                                                    <div className="pt-10">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={isSelected}
-                                                            onChange={() => toggleSelection(item._id)}
-                                                            className="w-6 h-6 rounded-lg accent-indigo-600 cursor-pointer"
-                                                        />
-                                                    </div>
-
-                                                    <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center flex-shrink-0 shadow-sm">
-                                                        {(item.finalImageUrl || item.finalDesignUrl) ? (
-                                                            <img
-                                                                src={item.finalImageUrl || item.finalDesignUrl}
-                                                                alt={item.template?.name || 'Custom Design'}
-                                                                className="w-full h-full object-contain p-2"
-                                                            />
-                                                        ) : (
-                                                            <div className="flex flex-col items-center text-gray-400">
-                                                                <FaShoppingBag size={32} />
-                                                                <span className="text-[10px] font-bold mt-1 uppercase tracking-widest text-gray-400">No Preview</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-2">
-                                                            <div className="min-w-0">
-                                                                <h3 className="font-black text-lg text-gray-800 truncate mb-1">
-                                                                    {item.template?.name || 'Custom Product'}
-                                                                </h3>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-wider">
-                                                                        <FaTag size={8} /> Custom Design
-                                                                    </span>
-                                                                    {isSelected && (
-                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-wider">
-                                                                            Selected
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <div className="text-left sm:text-right">
-                                                                <p className="text-xl font-black text-gray-900 mb-0">
-                                                                    ₹{Math.round((item.price * (1 + (item.gst || 0) / 100)) * (item.quantity || 1)).toLocaleString()}
-                                                                </p>
-                                                                <div className="flex flex-col sm:items-end gap-0.5 mt-1">
-                                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                                                        Unit: ₹{Math.round(item.price * (1 + (item.gst || 0) / 100))} (Incl. GST)
-                                                                    </p>
-                                                                    {(item.packingCharges > 0 || item.shippingCharges > 0) && (
-                                                                        <div className="flex flex-wrap gap-2 sm:justify-end">
-                                                                            {item.packingCharges > 0 && (
-                                                                                <span className="text-[9px] font-black text-orange-500 uppercase tracking-tighter">
-                                                                                    + ₹{item.packingCharges} Packing
-                                                                                </span>
-                                                                            )}
-                                                                            {item.shippingCharges > 0 && (
-                                                                                <span className="text-[9px] font-black text-blue-500 uppercase tracking-tighter">
-                                                                                    + ₹{item.shippingCharges} Shipping
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <Divider style={{ margin: '12px 0' }} />
-
-                                                        <div className="flex flex-wrap items-center justify-between gap-4">
-                                                            <div className={`flex items-center rounded-xl p-1 gap-1 transition-all ${isSelected ? 'bg-gray-100' : 'bg-gray-50 opacity-50 cursor-not-allowed'}`}>
-                                                                <button
-                                                                    onClick={() => handleQtyChange(item, -1)}
-                                                                    disabled={!isSelected || (item.quantity || 1) <= 1}
-                                                                    title={!isSelected ? "Select item to change quantity" : ""}
-                                                                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-gray-500 disabled:opacity-30 transition-all font-black text-lg"
-                                                                >
-                                                                    <FaMinus size={12} />
-                                                                </button>
-                                                                <span className="w-10 text-center font-black text-gray-800 text-sm">
-                                                                    {item.quantity || 1}
-                                                                </span>
-                                                                <button
-                                                                    onClick={() => handleQtyChange(item, 1)}
-                                                                    disabled={!isSelected}
-                                                                    title={!isSelected ? "Select item to change quantity" : ""}
-                                                                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-gray-500 disabled:opacity-30 transition-all font-black text-lg"
-                                                                >
-                                                                    <FaPlus size={12} />
-                                                                </button>
-                                                            </div>
-
-                                                            <div className="flex items-center gap-3">
-                                                                <button
-                                                                    disabled={!isSelected}
-                                                                    onClick={() => navigate(`/customize/${item.template?._id || item.template}`)}
-                                                                    title={!isSelected ? "Select item to edit" : ""}
-                                                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black transition-all uppercase tracking-wider
-                                                                        ${isSelected
-                                                                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                                                            : 'bg-gray-50 text-gray-300 cursor-not-allowed'}`}
-                                                                >
-                                                                    <FaPencilAlt size={10} /> Edit
-                                                                </button>
-                                                                <button
-                                                                    disabled={!isSelected}
-                                                                    onClick={() => handleRemoveClick(item)}
-                                                                    title={!isSelected ? "Select item to remove" : ""}
-                                                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black transition-all uppercase tracking-wider
-                                                                        ${isSelected
-                                                                            ? 'bg-red-50 text-red-500 hover:bg-red-100'
-                                                                            : 'bg-gray-50 text-gray-300 cursor-not-allowed'}`}
-                                                                >
-                                                                    <FaTrash size={10} /> Remove
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </Card>
-                                        );
-                                    })}
-                                </Space>
-                            </Col>
-
-                            <Col xs={24} lg={8}>
-                                <Card
-                                    className="rounded-xl shadow-xl overflow-hidden sticky top-24 bg-gray-200"
-                                    style={{  border: '1px solid rgba(161,137,204,0.2)' }}
-                                    title={<span className="font-black text-luxury-purple-dark uppercase tracking-widest text-xs">Order Summary</span>}
-                                >
-                                    <Space direction="vertical" style={{ width: '100%' }} size="large">
-                                        <div className="space-y-4">
-                                            <div className="flex justify-between items-center">
-                                                <div className="flex items-center gap-2 font-medium" style={{ color: '#453563ff' }}>
-                                                    <FaShoppingBag size={14} style={{ color: '#503582ff' }} />
-                                                    Product Cost ({totalItems} items)
-                                                </div>
-                                                <Text strong style={{ color: '#121111ff' }}>₹{Math.round(subtotal).toLocaleString()}</Text>
-                                            </div>
-
-                                            <div className="flex justify-between items-center">
-                                                <div className="flex items-center gap-2 font-medium" style={{ color: '#54407aff' }}>
-                                                    <FaBox size={14} style={{ color: '#A189CC' }} />
-                                                    Packing Charges
-                                                </div>
-                                                <Text strong style={{ color: packingChargesTotal > 0 ? '#141414ff' : '#5a3a7a' }}>
-                                                    ₹{packingChargesTotal.toLocaleString()}
-                                                </Text>
-                                            </div>
-
-                                            <div className="flex justify-between items-center">
-                                                <div className="flex items-center gap-2 font-medium" style={{ color: '#54407aff' }}>
-                                                    <FaTruck size={14} style={{ color: '#A189CC' }} />
-                                                    Shipping Fee
-                                                </div>
-                                                {shippingChargesTotal === 0
-                                                    ? <span className="px-2 py-0.5 rounded-lg bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-wider">FREE</span>
-                                                    : <Text strong className="text-gray-800">₹{shippingChargesTotal.toLocaleString()}</Text>
-                                                }
+                        <div className="space-y-2">
+                            <h2 className="text-xl font-serif text-white">Your cart is empty</h2>
+                            <p className="text-white/40 text-sm">Start by browsing our designs and customizing a product.</p>
+                        </div>
+                        <Link to="/" className="btn-gold inline-block">Browse Designs</Link>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                        {/* Cart Items */}
+                        <div className="lg:col-span-8 space-y-4">
+                            {cartItems.map((item) => {
+                                const isSelected = selectedItemIds.includes(item._id);
+                                return (
+                                    <div
+                                        key={item._id}
+                                        className={`luxury-card p-5 flex flex-col md:flex-row gap-6 items-center transition-all duration-300 ${isSelected ? 'opacity-100' : 'opacity-40 hover:opacity-60'}`}
+                                    >
+                                        <div className="flex items-center gap-5 w-full md:w-auto">
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={() => toggleSelection(item._id)}
+                                                className="w-4 h-4 rounded border-white/10 bg-primary-light text-gold focus:ring-gold cursor-pointer accent-gold"
+                                            />
+                                            <div className="w-24 h-24 rounded-luxury bg-primary-light border border-white/[0.06] overflow-hidden flex-shrink-0">
+                                                <img
+                                                    src={item.finalImageUrl || item.finalDesignUrl || 'https://via.placeholder.com/150'}
+                                                    alt={item.template?.name}
+                                                    className="w-full h-full object-cover"
+                                                />
                                             </div>
                                         </div>
 
-                                        <div className="pt-6 border-t border-luxury-purple/30">
-                                            <div className="flex justify-between items-end mb-6">
+                                        <div className="flex-1 space-y-3 w-full">
+                                            <div className="flex justify-between items-start">
                                                 <div>
-                                                    <p className="text-[10px] font-black text-luxury-purple-dark uppercase tracking-widest mb-1">Total Payable</p>
-                                                    <Title level={2} style={{ marginBottom: 0, color: '#0e0e0eff', fontWeight: 900 }}>
-                                                        ₹{Math.round(totalPrice).toLocaleString()}
-                                                    </Title>
+                                                    <h3 className="text-base font-serif text-white">{item.template?.name || 'Custom Product'}</h3>
+                                                    <p className="text-[10px] text-gold font-medium uppercase tracking-wider mt-0.5">Personalized</p>
                                                 </div>
-                                                <span className="text-[11px] text-green-600 font-bold bg-green-50 px-2 py-1 rounded-lg">Best Price ✅</span>
-                                            </div>
-
-                                            <button
-                                                disabled={selectedItems.length === 0}
-                                                onClick={() => navigate('/checkout')}
-                                                className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-2
-                                                    ${selectedItems.length === 0
-                                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
-                                                        : 'bg-[#2D5A27] text-white hover:bg-[#23471e] hover:-translate-y-1 hover:shadow-green-900/10 active:scale-95'
-                                                    }`}
-                                            >
-                                                Proceed to Checkout <span className="text-lg">→</span>
-                                            </button>
-
-                                            <Link to="/" className="block mt-4 text-center">
-                                                <Text type="secondary" className="hover:text-indigo-600 text-xs font-black uppercase tracking-widest cursor-pointer transition-all">
-                                                    ← Continue Shopping
-                                                </Text>
-                                            </Link>
-                                        </div>
-
-                                        <div className="p-4 rounded-2xl border flex items-start gap-3" style={{ background: 'rgba(161,137,204,0.1)', border: '1px solid rgba(161,137,204,0.2)' }}>
-                                            <FaShieldAlt className="text-indigo-500 mt-1" />
-                                            <div>
-                                                <Text strong className="text-[11px] uppercase tracking-widest" style={{color:'#A189CC'}}>100% SECURE CHECKOUT</Text>
-                                                <p className="text-[10px] mt-1 leading-relaxed" style={{color:'rgba(161,137,204,0.7)'}}>
-
-                                                    We use industry-standard encryption. Your payment details are never stored on our servers.
+                                                <p className="text-xl font-serif text-white">
+                                                    ₹{Math.round((item.price * (1 + (item.gst || 0) / 100)) * (item.quantity || 1)).toLocaleString()}
                                                 </p>
                                             </div>
+
+                                            <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
+                                                <div className="flex items-center bg-primary-light rounded-luxury border border-white/[0.06] p-0.5">
+                                                    <button
+                                                        onClick={() => handleQtyChange(item, -1)}
+                                                        className="w-7 h-7 flex items-center justify-center text-white/50 hover:text-white transition-colors"
+                                                    >
+                                                        <FaMinus size={9} />
+                                                    </button>
+                                                    <span className="w-8 text-center text-sm font-medium text-white">{item.quantity || 1}</span>
+                                                    <button
+                                                        onClick={() => handleQtyChange(item, 1)}
+                                                        className="w-7 h-7 flex items-center justify-center text-white/50 hover:text-white transition-colors"
+                                                    >
+                                                        <FaPlus size={9} />
+                                                    </button>
+                                                </div>
+
+                                                <div className="flex items-center gap-4">
+                                                    <button
+                                                        onClick={() => navigate(`/customize/${item.template?._id || item.template}`)}
+                                                        className="text-[10px] font-medium text-white/40 hover:text-gold uppercase tracking-wider transition-colors flex items-center gap-1.5"
+                                                    >
+                                                        <FaPencilAlt size={9} /> Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleRemoveClick(item)}
+                                                        className="text-[10px] font-medium text-red-400/70 hover:text-red-400 uppercase tracking-wider transition-colors flex items-center gap-1.5"
+                                                    >
+                                                        <FaTrash size={9} /> Remove
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </Space>
-                                </Card>
-                            </Col>
-                        </Row>
-                    )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Summary */}
+                        <div className="lg:col-span-4">
+                            <div className="luxury-card p-7 sticky top-28 space-y-6">
+                                <h2 className="text-[11px] font-semibold text-gold uppercase tracking-[0.2em]">Order Summary</h2>
+
+                                <div className="space-y-3">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-white/40">Subtotal ({totalItems} items)</span>
+                                        <span className="text-white font-medium">₹{Math.round(subtotal).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-white/40">Packing</span>
+                                        <span className="text-white font-medium">₹{packingChargesTotal.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-white/40">Shipping</span>
+                                        {shippingChargesTotal === 0
+                                            ? <span className="text-gold font-medium">Free</span>
+                                            : <span className="text-white font-medium">₹{shippingChargesTotal.toLocaleString()}</span>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div className="pt-6 border-t border-white/[0.06] flex justify-between items-end">
+                                    <div>
+                                        <p className="text-[10px] font-medium text-white/30 uppercase tracking-wider mb-1">Total</p>
+                                        <p className="text-3xl font-serif text-white">₹{totalPrice.toLocaleString()}</p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    disabled={selectedItems.length === 0}
+                                    onClick={() => navigate('/checkout')}
+                                    className="btn-gold w-full flex items-center justify-center gap-2.5 py-3.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                    Proceed to Checkout
+                                    <FaArrowLeft className="rotate-180" size={11} />
+                                </button>
+
+                                <div className="flex items-start gap-3 p-3.5 rounded-luxury bg-white/[0.02] border border-white/[0.04]">
+                                    <FaShieldAlt className="text-gold mt-0.5 flex-shrink-0" size={12} />
+                                    <p className="text-[10px] text-white/30 leading-relaxed">
+                                        Secured by industry-standard encryption for a safe checkout experience.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Remove Confirmation Modal */}
+            {removeModal.isOpen && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-primary-dark/80 backdrop-blur-luxury" onClick={() => setRemoveModal({ isOpen: false })}></div>
+                    <div className="relative bg-primary border border-white/10 p-8 rounded-luxury max-w-sm w-full text-center space-y-5 animate-fadeIn">
+                        <div className="w-14 h-14 bg-red-500/10 rounded-full flex items-center justify-center mx-auto text-red-500">
+                            <FaTrash size={20} />
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-xl font-serif text-white">Remove Item?</h3>
+                            <p className="text-white/40 text-sm">Remove "{removeModal.itemName}" from your cart?</p>
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={() => setRemoveModal({ isOpen: false })} className="flex-1 py-3 rounded-luxury border border-white/10 text-white font-medium text-sm hover:bg-white/5 transition-all">Keep</button>
+                            <button onClick={handleConfirmRemove} className="flex-1 py-3 rounded-luxury bg-red-600 text-white font-medium text-sm hover:bg-red-700 transition-all">Remove</button>
+                        </div>
+                    </div>
                 </div>
-            </Content>
-        </Layout>
+            )}
+        </div>
     );
 };
 

@@ -7,43 +7,44 @@ export default {
     theme: {
         extend: {
             colors: {
+                primary: {
+                    dark: '#0F0B1F',
+                    DEFAULT: '#1A1333',
+                    light: '#241D3A',
+                },
+                gold: {
+                    dark: '#8B7230',
+                    DEFAULT: '#C9A14A',
+                    light: '#E6C77B',
+                },
+                accent: {
+                    soft: '#B8B8C0',
+                    purple: '#422D6B',
+                },
                 luxury: {
-                    green: {
-                        dark: '#2D3A2B',
-                        DEFAULT: '#4A5D48',
-                        light: '#8A9A83'
-                    },
-                    blue: {
-                        dark: '#0A1128',
-                        DEFAULT: '#1B2B52',
-                        light: '#4B6594'
-                    },
-                    red: {
-                        dark: '#4D0A11',
-                        DEFAULT: '#720E17',
-                        light: '#A1515B'
-                    },
-                    gold: {
-                        dark: '#5E4B3C',
-                        DEFAULT: '#A68A56',
-                        light: '#D4C19C'
-                    },
-                    purple: {
-                        dark: '#30174D',
-                        DEFAULT: '#563C8C',
-                        light: '#A189CC'
-                    },
-                    charcoal: '#0F172A',
-                    slate: '#1E293B',
                     cream: '#FAF9F6',
-                    pearl: '#FFFFFF',
-                }
+                    purple: {
+                        dark: '#0F0B1F',
+                        DEFAULT: '#1A1333',
+                        light: '#B8B8C0',
+                    },
+                },
             },
             fontFamily: {
-                'sans': ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+                'sans': ['Inter', 'Plus Jakarta Sans', 'sans-serif'],
                 'serif': ['Fraunces', 'serif'],
-                'premium': ['Plus Jakarta Sans', 'sans-serif'],
-            }
+                'display': ['Plus Jakarta Sans', 'sans-serif'],
+            },
+            borderRadius: {
+                'luxury': '12px',
+            },
+            boxShadow: {
+                'glow': '0 0 20px rgba(201, 161, 74, 0.15)',
+                'glow-lg': '0 0 40px rgba(201, 161, 74, 0.1)',
+                'glow-purple': '0 0 20px rgba(66, 45, 107, 0.2)',
+                'card': '0 4px 24px rgba(0, 0, 0, 0.3)',
+                'card-hover': '0 8px 40px rgba(0, 0, 0, 0.4)',
+            },
         },
     },
     plugins: [],

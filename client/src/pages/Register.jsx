@@ -32,70 +32,47 @@ const Register = () => {
     };
 
     return (
-        <div className="h-[100vh] flex items-center justify-center bg-luxury-cream font-sans p-6">
-            <div className="w-full max-w-5xl flex bg-white rounded-[40px] shadow-[0_40px_100px_rgba(0,0,0,0.04)] overflow-hidden border border-luxury-cream relative">
-                {/* Back Button - Inside Container */}
+        <div className="min-h-screen flex items-center justify-center bg-primary-dark p-6 relative overflow-hidden">
+            {/* Background */}
+            <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-gold/[0.04] rounded-full blur-[140px]"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-accent-purple/10 rounded-full blur-[120px]"></div>
+
+            <div className="w-full max-w-5xl flex flex-row-reverse bg-primary rounded-luxury shadow-card overflow-hidden border border-white/[0.06] relative animate-fadeIn">
+                {/* Back Button */}
                 <button
                     onClick={() => navigate('/')}
-                    className="absolute top-6 left-6 flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-luxury-purple transition-colors group z-50"
+                    className="absolute top-7 right-7 flex items-center gap-2.5 text-[11px] font-semibold text-white/40 uppercase tracking-[0.15em] hover:text-gold transition-all group z-50"
                 >
-                    <div className="w-7 h-7 rounded-full border border-luxury-cream flex items-center justify-center group-hover:border-luxury-purple/20 transition-all bg-white shadow-sm">
-                        <FaArrowLeft size={8} />
-                    </div>
                     <span>Back</span>
+                    <FaArrowRight size={10} className="group-hover:translate-x-1 transition-transform" />
                 </button>
 
-                {/* Visual Side (Left on Register) */}
-                <div className="hidden lg:flex w-1/2 bg-luxury-purple-dark relative p-16 items-center flex-col justify-center overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-full">
-                        <div className="absolute top-20 left-10 w-64 h-64 bg-luxury-purple rounded-full blur-[100px] opacity-10"></div>
-                        <div className="absolute bottom-20 right-10 w-64 h-64 bg-luxury-purple-light rounded-full blur-[100px] opacity-10"></div>
-                    </div>
-
-                    <div className="relative z-10 text-center">
-                        <div className="w-[16rem] h-20 bg-white/10 backdrop-blur-3xl rounded-3xl flex items-center justify-center mx-auto mb-4 border border-white/20 shadow-2xl">
-                            <Logo className="scale-150" />
-                        </div>
-                        <h2 className="text-3xl font-[900] text-white tracking-tight mb-2 leading-tight">Start Your <br />Custom Journey</h2>
-                        <p className="text-luxury-purple-light/60 font-medium text-lg max-w-sm mx-auto">Create an account today and get exclusive access to premium design tools and offers.</p>
-
-                        <div className="mt-8 p-4 bg-white/10 backdrop-blur-xl border border-white/20 rounded-lg text-left">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="w-2 h-2 rounded-full bg-green-400"></div>
-                                <p className="text-[10px] font-black text-white uppercase tracking-widest">Active Perk</p>
-                            </div>
-                            <p className="text-white font-bold">10% Off your first order</p>
-                            <p className="text-blue-100/60 text-xs font-medium">Applied automatically at checkout</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Form Side */}
-                <div className="w-full lg:w-1/2 p-10 md:p-16">
-                    <div className="mb-6">
-                        <Link to="/" className="inline-block transform hover:scale-105 transition-transform lg:hidden"><Logo /></Link>
-                        <h1 className="text-3xl font-[900] text-slate-900 mt-2 lg:mt-0 mb-1 tracking-tight">Create Account</h1>
-                        <p className="text-slate-500 font-medium">Join our community of 10k+ creators</p>
+                {/* Right Side: Form */}
+                <div className="w-full lg:w-1/2 p-12 md:p-16 lg:p-20">
+                    <div className="mb-10">
+                        <Logo />
+                        <h1 className="text-3xl md:text-4xl font-serif text-white mt-8 mb-2">Create Account</h1>
+                        <p className="text-white/40 text-sm">Start personalizing your products today</p>
                     </div>
 
                     {error && (
-                        <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-2xl text-sm font-bold mb-6 flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-luxury text-sm mb-6 flex items-center gap-2 animate-fadeIn">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
                             {error}
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-3">
+                    <form onSubmit={handleSubmit} className="space-y-5">
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+                            <label className="text-[11px] font-medium text-white/40 uppercase tracking-wider ml-1">Full Name</label>
                             <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400 group-focus-within:text-luxury-gold transition-colors">
-                                    <FaUser size={14} />
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-white/30 group-focus-within:text-gold transition-colors">
+                                    <FaUser size={13} />
                                 </div>
                                 <input
                                     type="text"
-                                    className="w-full pl-8 pr-4 py-2 bg-slate-50 border border-slate-200 rounded outline-none focus:ring-4 focus:ring-luxury-gold/10 focus:border-luxury-gold transition-all font-medium text-slate-700"
-                                    placeholder="John Doe"
+                                    className="input-luxury w-full pl-11"
+                                    placeholder="Enter your full name"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     required
@@ -104,15 +81,15 @@ const Register = () => {
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                            <label className="text-[11px] font-medium text-white/40 uppercase tracking-wider ml-1">Email</label>
                             <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400 group-focus-within:text-luxury-gold transition-colors">
-                                    <FaEnvelope size={14} />
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-white/30 group-focus-within:text-gold transition-colors">
+                                    <FaEnvelope size={13} />
                                 </div>
                                 <input
                                     type="email"
-                                    className="w-full pl-8 pr-4 py-2 bg-slate-50 border border-slate-200 rounded outline-none focus:ring-4 focus:ring-luxury-gold/10 focus:border-luxury-gold transition-all font-medium text-slate-700"
-                                    placeholder="your@email.com"
+                                    className="input-luxury w-full pl-11"
+                                    placeholder="you@example.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
@@ -121,14 +98,14 @@ const Register = () => {
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Secure Password</label>
+                            <label className="text-[11px] font-medium text-white/40 uppercase tracking-wider ml-1">Password</label>
                             <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400 group-focus-within:text-luxury-gold transition-colors">
-                                    <FaLock size={14} />
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-white/30 group-focus-within:text-gold transition-colors">
+                                    <FaLock size={13} />
                                 </div>
                                 <input
                                     type="password"
-                                    className="w-full pl-8 pr-4 py-2 bg-slate-50 border border-slate-200 rounded outline-none focus:ring-4 focus:ring-luxury-gold/10 focus:border-luxury-gold transition-all font-medium text-slate-700"
+                                    className="input-luxury w-full pl-11"
                                     placeholder="••••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
@@ -140,17 +117,50 @@ const Register = () => {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-luxury-charcoal text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-luxury-gold transition-all active:scale-[0.98] shadow-xl shadow-luxury-charcoal/20 flex items-center justify-center gap-2 group disabled:opacity-70 mt-4"
+                            className="btn-gold w-full flex items-center justify-center gap-2.5 mt-2 disabled:opacity-50"
                         >
-                            {isLoading ? 'Creating Account...' : 'Create Account'}
-                            {!isLoading && <FaArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />}
+                            {isLoading ? 'Creating...' : 'Create Account'}
+                            {!isLoading && <FaArrowRight size={11} />}
                         </button>
                     </form>
 
-                    <div className="mt-3 pt-3 border-t border-slate-100">
-                        <p className="text-center text-sm font-medium text-slate-500">
-                            Already have an account? <Link to="/login" className="text-luxury-gold font-black hover:underline ml-1">Sign In</Link>
+                    <div className="mt-10 pt-6 border-t border-white/[0.06]">
+                        <p className="text-center text-sm text-white/40">
+                            Already have an account? <Link to="/login" className="text-gold font-semibold hover:underline ml-1">Sign In</Link>
                         </p>
+                    </div>
+                </div>
+
+                {/* Left Side: Visual */}
+                <div className="hidden lg:flex lg:w-1/2 bg-primary-light relative p-16 flex-col justify-center items-center overflow-hidden">
+                    <div className="absolute inset-0">
+                         <img
+                            src="https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=800"
+                            className="w-full h-full object-cover opacity-15"
+                            alt="Background"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary via-transparent to-primary"></div>
+                    </div>
+
+                    <div className="relative z-10 text-center space-y-6">
+                        <div className="w-20 h-20 bg-gold/10 backdrop-blur-xl border border-gold/20 rounded-luxury flex items-center justify-center mx-auto">
+                             <Logo />
+                        </div>
+                        <div className="space-y-3">
+                            <h2 className="text-3xl font-serif text-white tracking-tight leading-tight">Begin Your <br /><span className="text-gold italic">Journey</span></h2>
+                            <p className="text-white/40 text-sm max-w-xs mx-auto">Join us and start creating personalized products for every occasion.</p>
+                        </div>
+
+                        <div className="pt-6 grid grid-cols-2 gap-3">
+                            <div className="p-4 bg-white/[0.04] backdrop-blur-md rounded-luxury border border-white/[0.06]">
+                                <p className="text-gold font-bold text-lg">100%</p>
+                                <p className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">Custom Made</p>
+                            </div>
+                            <div className="p-4 bg-white/[0.04] backdrop-blur-md rounded-luxury border border-white/[0.06]">
+                                <p className="text-gold font-bold text-lg">24/7</p>
+                                <p className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">Support</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -16,42 +16,40 @@ import Checkout from './pages/Checkout';
 import OrderSuccess from './pages/OrderSuccess';
 import QuickBuy from './pages/QuickBuy';
 import Invoice from './pages/Invoice';
-import { FaShoppingCart, FaUser, FaChevronDown, FaChevronUp, FaSignOutAlt, FaUserCircle, FaTimes } from 'react-icons/fa';
+import { FaShoppingCart, FaChevronDown, FaSignOutAlt, FaUserCircle, FaTimes } from 'react-icons/fa';
 import { Toaster } from 'react-hot-toast';
 import { CartProvider, useCart } from './context/CartContext';
 import Logo from './components/Logo';
-
-import TopInfoBar from './components/TopInfoBar';
 
 // Logout Confirmation Modal
 const LogoutModal = ({ isOpen, onConfirm, onCancel }) => {
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
-            <div className="relative bg-luxury-purple-dark rounded-3xl shadow-2xl p-8 max-w-sm w-full animate-fadeIn text-center">
-                <button onClick={onCancel} className="absolute top-4 right-4 p-2 rounded-full hover:bg-luxury-purple/30">
-                    <FaTimes className="text-luxury-purple-light text-sm" />
+            <div className="absolute inset-0 bg-primary-dark/80 backdrop-blur-luxury" onClick={onCancel} />
+            <div className="relative bg-primary rounded-luxury border border-white/10 shadow-2xl p-8 max-w-sm w-full animate-fadeIn text-center">
+                <button onClick={onCancel} className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/5 transition-colors">
+                    <FaTimes className="text-accent-soft text-sm" />
                 </button>
-                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-5">
+                <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-5">
                     <FaSignOutAlt size={24} className="text-red-500" />
                 </div>
-                <h3 className="text-2xl font-black text-white mb-2">Logout?</h3>
-                <p className="text-luxury-purple-light font-medium mb-8">
-                    Are you sure you want to end your session? You'll need to log in again to access your account.
+                <h3 className="text-2xl font-serif text-white mb-2">Sign Out</h3>
+                <p className="text-accent-soft text-sm mb-8">
+                    Are you sure you want to sign out of your account?
                 </p>
                 <div className="flex gap-3">
                     <button
                         onClick={onCancel}
-                        className="flex-1 py-3.5 rounded-2xl border-2 border-luxury-purple font-bold text-luxury-purple-light hover:bg-luxury-purple/20 transition-colors"
+                        className="flex-1 py-3 rounded-luxury border border-white/10 font-semibold text-white text-sm hover:bg-white/5 transition-colors"
                     >
-                        Stay In
+                        Cancel
                     </button>
                     <button
                         onClick={onConfirm}
-                        className="flex-1 py-3.5 rounded-2xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
+                        className="flex-1 py-3 rounded-luxury bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors"
                     >
-                        Yes, Logout
+                        Sign Out
                     </button>
                 </div>
             </div>
@@ -76,9 +74,19 @@ const Navigation = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // Hide header on auth pages and admin layout
-    const isAuthPage = ['/login', '/register', '/admin/src/components/AdminLogin'].includes(location.pathname);
-    const isAdminDashboard = location.pathname.startsWith('/admin') && location.pathname !== '/admin/login';
+    // Close dropdown on outside click
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (isProfileOpen && !e.target.closest('.profile-dropdown')) {
+                setIsProfileOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isProfileOpen]);
+
+    const isAuthPage = ['/login', '/register'].includes(location.pathname);
+    const isAdminDashboard = location.pathname.startsWith('/admin');
 
     if (isAuthPage || isAdminDashboard) return null;
 
@@ -92,18 +100,14 @@ const Navigation = () => {
         logout();
     };
 
-    const handleDesignsClick = (e) => {
-        if (location.pathname === '/') {
-            e.preventDefault();
-            const element = document.getElementById('designs');
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth' });
-            }
-        }
-    };
+    const navLinks = [
+        { label: 'Home', path: '/' },
+        { label: 'Designs', path: '/#designs' },
+    ];
 
-    const handleHomeClick = () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+    const isActive = (path) => {
+        if (path === '/') return location.pathname === '/';
+        return location.pathname + location.hash === path;
     };
 
     return (
@@ -113,143 +117,81 @@ const Navigation = () => {
                 onConfirm={handleConfirmLogout}
                 onCancel={() => setShowLogoutModal(false)}
             />
-            <header className={`w-full sticky top-0 z-[9999] transition-all duration-700 font-sans ${scrolled
-                ? 'bg-luxury-purple-dark/95 backdrop-blur-2xl shadow-[0_8px_32px_rgba(66,45,107,0.4)] py-1.5 border-b-2 border-luxury-purple/50'
-                : 'bg-transparent py-5 border-b border-white/5'
+            <header className={`fixed top-0 left-0 right-0 z-[9999] transition-all duration-500 ${scrolled
+                ? 'bg-primary-dark/90 backdrop-blur-luxury border-b border-white/[0.06] py-4'
+                : 'bg-transparent py-6'
                 }`}>
-                <nav className="max-w-7xl mx-auto px-6 h-12 md:h-16 flex items-center justify-between">
-                    {/* Left: Logo */}
-                    <Link to="/" onClick={handleHomeClick} className="hover:opacity-90 transition-all transform active:scale-95">
+                <nav className="max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between">
+                    <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
                         <Logo />
                     </Link>
 
-                    {/* Middle: Desktop Nav Links */}
-                    <div className="hidden lg:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
-                        <Link to="/" onClick={handleHomeClick} className="text-[13px] font-[900] text-white hover:text-luxury-purple-light transition-colors uppercase tracking-[0.15em] relative group">
-                            Home
-                            <span className="absolute -bottom-1 w-full h-[3px] bg-luxury-purple-light scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
-                        </Link>
-                        <Link 
-                            to="/#designs" 
-                            onClick={handleDesignsClick}
-                            className="text-[13px] font-[900] text-white hover:text-luxury-purple-light transition-colors uppercase tracking-[0.15em] relative group"
-                        >
-                            Designs
-                            <span className="absolute -bottom-1 w-full h-[3px] bg-luxury-purple-light scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
-                        </Link>
-                        {user && user.role === 'admin' && (
-                            <Link to="/admin" className="text-[13px] font-[900] text-white hover:text-luxury-purple-light transition-colors uppercase tracking-[0.15em] relative group">
-                                Admin
-                                <span className="absolute -bottom-1 w-full h-[3px] bg-luxury-purple-light scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+                    {/* Nav Links - Only Home & Designs */}
+                    <div className="hidden md:flex items-center gap-10">
+                        {navLinks.map((item) => (
+                            <Link
+                                key={item.label}
+                                to={item.path}
+                                className={`text-[11px] font-semibold uppercase tracking-[0.2em] relative group transition-colors duration-300 ${
+                                    isActive(item.path) ? 'text-gold' : 'text-white/70 hover:text-gold'
+                                }`}
+                            >
+                                {item.label}
+                                <span className={`absolute -bottom-1.5 left-0 h-[2px] bg-gold transition-all duration-300 ${
+                                    isActive(item.path) ? 'w-full' : 'w-0 group-hover:w-full'
+                                }`}></span>
                             </Link>
-                        )}
+                        ))}
                     </div>
 
-                    {/* Right: Actions */}
-                    <div className="flex items-center gap-3">
+                    {/* Right Side Actions */}
+                    <div className="flex items-center gap-5">
                         {/* Cart */}
-                        {(!user || user.role !== 'admin') && (
-                            <Link to="/cart" className="relative p-2.5 rounded-full hover:bg-white/10 transition-all text-white hover:text-luxury-purple-light active:scale-90">
-                                <FaShoppingCart size={20} />
-                                {cartItems.length > 0 && (
-                                    <span className="absolute top-1 right-1 bg-luxury-purple text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full ring-[3px] ring-white">
-                                        {cartItems.length}
-                                    </span>
-                                )}
-                            </Link>
-                        )}
+                        <Link to="/cart" className="relative text-white/80 hover:text-gold transition-colors duration-300 p-2">
+                            <FaShoppingCart size={18} />
+                            {cartItems.length > 0 && (
+                                <span className="absolute -top-0.5 -right-0.5 bg-gold text-primary-dark text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                                    {cartItems.length}
+                                </span>
+                            )}
+                        </Link>
 
-                        {/* Account */}
+                        {/* User */}
                         {user ? (
-                            <div className="relative">
+                            <div className="relative profile-dropdown">
                                 <button
                                     onClick={() => setIsProfileOpen(!isProfileOpen)}
-                                    className="flex items-center gap-2 p-1 pl-2 pr-1 rounded-full border border-white/30 hover:border-white/60 hover:bg-white/10 transition-all active:scale-95 bg-white/10 shadow-sm"
+                                    className="flex items-center gap-2 py-1.5 pl-1.5 pr-3 rounded-full border border-white/10 hover:border-gold/40 transition-all duration-300 bg-white/[0.03]"
                                 >
-                                    <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-luxury-purple/5 flex-shrink-0">
-                                        {user.avatar ? (
-                                            <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full bg-luxury-purple flex items-center justify-center text-white text-[12px] font-black uppercase">
-                                                {user.name.charAt(0)}
-                                            </div>
-                                        )}
+                                    <div className="w-7 h-7 rounded-full bg-gold/10 flex items-center justify-center text-gold text-xs font-bold uppercase">
+                                        {user.avatar ? <img src={user.avatar} className="w-full h-full rounded-full object-cover" /> : user.name.charAt(0)}
                                     </div>
-                                    <FaChevronDown className={`text-[9px] text-luxury-purple/40 mr-2 transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`} />
+                                    <FaChevronDown className={`text-[9px] text-white/50 transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`} />
                                 </button>
 
-                                {/* Dropdown Menu */}
                                 {isProfileOpen && (
-                                    <>
-                                        <div className="fixed inset-0 z-[9998]" onClick={() => setIsProfileOpen(false)} />
-                                        <div className="absolute right-0 mt-3 w-64 bg-luxury-purple-dark rounded-2xl shadow-[0_20px_50px_rgba(20,5,40,0.5)] border border-luxury-purple/40 py-3 z-[9999] animate-fadeIn">
-                                            <div className="px-5 py-4 border-b border-luxury-purple/40">
-                                                <p className="text-[10px] font-black text-luxury-purple-light/60 uppercase tracking-widest mb-1 leading-none">Account</p>
-                                                <p className="text-[15px] font-[900] text-white truncate leading-none mb-1">{user.name}</p>
-                                                <p className="text-xs text-luxury-purple-light font-medium truncate">{user.email}</p>
-                                            </div>
-
-                                            <div className="py-2">
-                                                <Link
-                                                    to="/profile"
-                                                    onClick={() => setIsProfileOpen(false)}
-                                                    className="flex items-center gap-3 px-5 py-3 text-[13px] font-bold text-luxury-purple-light hover:bg-luxury-purple/30 transition-all"
-                                                >
-                                                    <FaUserCircle size={16} />
-                                                    Personal Profile
-                                                </Link>
-
-                                                {user.role === 'admin' && (
-                                                    <div className="border-t border-luxury-purple/30 my-1 pt-1">
-                                                        <Link
-                                                            to="/admin/orders"
-                                                            onClick={() => setIsProfileOpen(false)}
-                                                            className="flex items-center gap-3 px-5 py-3 text-[13px] font-bold text-luxury-purple-light hover:bg-luxury-purple/30 transition-all"
-                                                        >
-                                                            <FaShoppingCart size={16} />
-                                                            Order Management
-                                                        </Link>
-                                                        <Link
-                                                            to="/admin/users"
-                                                            onClick={() => setIsProfileOpen(false)}
-                                                            className="flex items-center gap-3 px-5 py-3 text-[13px] font-bold text-luxury-purple-light hover:bg-luxury-purple/30 transition-all"
-                                                        >
-                                                            <FaUser size={16} />
-                                                            User Directory
-                                                        </Link>
-                                                    </div>
-                                                )}
-
-                                                {user.role !== 'admin' && (
-                                                    <Link
-                                                        to="/cart"
-                                                        onClick={() => setIsProfileOpen(false)}
-                                                        className="flex items-center gap-3 px-5 py-3 text-[13px] font-bold text-luxury-purple-light hover:bg-luxury-purple/30 transition-all"
-                                                    >
-                                                        <FaShoppingCart size={16} />
-                                                        Shopping Cart
-                                                        {cartItems.length > 0 && (
-                                                            <span className="ml-auto bg-luxury-purple text-white text-[10px] font-black px-2 py-0.5 rounded-full">{cartItems.length}</span>
-                                                        )}
-                                                    </Link>
-                                                )}
-                                            </div>
-
-                                            <div className="border-t border-luxury-purple/30 pt-2 px-2">
-                                                <button
-                                                    onClick={handleLogoutClick}
-                                                    className="w-full flex items-center gap-3 px-3 py-3 text-[13px] font-black text-red-400 hover:bg-red-900/20 rounded-xl transition-all"
-                                                >
-                                                    <FaSignOutAlt size={16} />
-                                                    Sign Out
-                                                </button>
-                                            </div>
+                                    <div className="absolute right-0 mt-3 w-56 bg-primary border border-white/10 rounded-luxury shadow-card py-2 animate-fadeIn">
+                                        <div className="px-4 py-3 border-b border-white/[0.06]">
+                                            <p className="text-[10px] font-medium text-white/40 uppercase tracking-widest mb-0.5">Account</p>
+                                            <p className="text-sm font-semibold text-white truncate">{user.name}</p>
                                         </div>
-                                    </>
+                                        <div className="py-1">
+                                            <Link to="/profile" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-gold hover:bg-white/[0.03] transition-all">
+                                                <FaUserCircle size={14} /> Profile
+                                            </Link>
+                                            <button onClick={handleLogoutClick} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-all">
+                                                <FaSignOutAlt size={14} /> Sign Out
+                                            </button>
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         ) : (
-                            <Link to="/login" className="px-6 py-2.5 rounded-full text-xs font-black text-white bg-luxury-purple hover:bg-luxury-purple-dark transition-all active:scale-95 shadow-lg shadow-luxury-purple/20 uppercase tracking-widest">
+                            <Link
+                                to="/login"
+                                className="flex items-center gap-2 py-2.5 px-6 rounded-full border border-gold/40 text-gold text-[11px] font-semibold uppercase tracking-[0.15em] hover:bg-gold hover:text-primary-dark transition-all duration-300"
+                            >
+                                <FaUserCircle size={14} />
                                 Sign In
                             </Link>
                         )}
@@ -265,65 +207,37 @@ function App() {
         <AuthProvider>
             <CartProvider>
                 <Router>
-                    <div className="min-h-screen font-sans" style={{ background: '#1A0F2E', color: '#E8E0F0' }}>
-                        <Toaster 
-                            position="top-center" 
-                            reverseOrder={false} 
-                            containerStyle={{ zIndex: 99999, top: 40 }}
+                    <div className="min-h-screen bg-primary-dark text-white font-sans">
+                        <Toaster
+                            position="top-center"
                             toastOptions={{
                                 style: {
-                                    fontSize: '13px',
-                                    fontWeight: 'bold',
+                                    background: '#1A1333',
+                                    color: '#FFFFFF',
+                                    border: '1px solid rgba(255, 255, 255, 0.08)',
                                     borderRadius: '12px',
-                                    padding: '12px 24px',
+                                    fontSize: '14px',
                                 },
                             }}
                         />
                         <Navigation />
-                        <Routes>
-                            <Route path="/" element={<Home />} />
-                            <Route path="/login" element={<Login />} />
-                            <Route path="/register" element={<Register />} />
-                            {/* Standalone admin app is served by Express under `/admin/*`.
-                                In local `client` dev-server this route won't exist, so we
-                                intentionally render nothing to avoid "No routes matched". */}
-                            <Route path="/admin/*" element={<div />} />
-
-
-                            <Route path="/category/:categoryName" element={<ProductCategory />} />
-                            <Route path="/product/:id" element={<TemplateDetails />} />
-                            <Route path="/customize/:id" element={<CustomizeProduct />} />
-                            <Route path="/profile" element={
-                                <ProtectedRoute>
-                                    <Profile />
-                                </ProtectedRoute>
-                            } />
-                            <Route path="/cart" element={
-                                <ProtectedRoute>
-                                    <Cart />
-                                </ProtectedRoute>
-                            } />
-                            <Route path="/checkout" element={
-                                <ProtectedRoute>
-                                    <Checkout />
-                                </ProtectedRoute>
-                            } />
-                            <Route path="/order-success/:id" element={
-                                <ProtectedRoute>
-                                    <OrderSuccess />
-                                </ProtectedRoute>
-                            } />
-                            <Route path="/quick-buy/:id" element={
-                                <ProtectedRoute>
-                                    <QuickBuy />
-                                </ProtectedRoute>
-                            } />
-                            <Route path="/invoice/:orderId" element={
-                                <ProtectedRoute>
-                                    <Invoice />
-                                </ProtectedRoute>
-                            } />
-                        </Routes>
+                        <main className="transition-all duration-500">
+                            <Routes>
+                                <Route path="/" element={<Home />} />
+                                <Route path="/login" element={<Login />} />
+                                <Route path="/register" element={<Register />} />
+                                <Route path="/admin/*" element={<div />} />
+                                <Route path="/category/:categoryName" element={<ProductCategory />} />
+                                <Route path="/product/:id" element={<TemplateDetails />} />
+                                <Route path="/customize/:id" element={<CustomizeProduct />} />
+                                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                                <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
+                                <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+                                <Route path="/order-success/:id" element={<ProtectedRoute><OrderSuccess /></ProtectedRoute>} />
+                                <Route path="/quick-buy/:id" element={<ProtectedRoute><QuickBuy /></ProtectedRoute>} />
+                                <Route path="/invoice/:orderId" element={<ProtectedRoute><Invoice /></ProtectedRoute>} />
+                            </Routes>
+                        </main>
                     </div>
                 </Router>
             </CartProvider>

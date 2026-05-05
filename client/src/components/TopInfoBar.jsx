@@ -4,44 +4,47 @@ import { FaPhoneAlt, FaQuestionCircle, FaTruck, FaAward, FaUsers, FaGem, FaUserT
 
 const TopInfoBar = () => {
     return (
-        <div className="w-full">
+        <div className="w-full relative z-[10000]">
             {/* Top Secondary Links */}
-            <div className="bg-white border-b py-2 hidden md:block">
-                <div className="container mx-auto flex justify-between items-center px-4 text-[13px] font-semibold text-gray-500">
-                    <div className="flex space-x-6">
-                        <Link to="/contact" className="hover:text-blue-600 transition-colors">Contact Us</Link>
-                        <Link to="/faq" className="hover:text-blue-600 transition-colors">FAQ's</Link>
-                        <Link to="/track-order" className="hover:text-blue-600 transition-colors">Track Order</Link>
+            <div className="bg-primary border-b border-white/5 py-2 hidden md:block">
+                <div className="container mx-auto flex justify-between items-center px-6 text-[10px] font-bold text-accent-soft uppercase tracking-widest">
+                    <div className="flex space-x-8">
+                        <Link to="/contact" className="hover:text-gold transition-colors">Concierge</Link>
+                        <Link to="/faq" className="hover:text-gold transition-colors">Inquiries</Link>
+                        <Link to="/track-order" className="hover:text-gold transition-colors">Track Shipment</Link>
+                    </div>
+                    <div className="flex items-center gap-2 italic">
+                        <span className="text-gold">Private Member Suite</span>
                     </div>
                 </div>
             </div>
 
             {/* Dark Trust Badge Bar */}
-            <div className="bg-luxury-purple-dark text-white py-2.5 overflow-hidden whitespace-nowrap">
-                <div className="container mx-auto px-4 flex justify-between items-center text-[11px] md:text-[13px] font-bold uppercase tracking-tight">
-                    <div className="flex items-center space-x-1.5 text-luxury-purple-light">
-                        <FaAward className="text-sm" />
+            <div className="bg-primary-dark text-white py-3 overflow-hidden whitespace-nowrap">
+                <div className="container mx-auto px-6 flex justify-between items-center text-[9px] md:text-[11px] font-bold uppercase tracking-[0.2em]">
+                    <div className="flex items-center space-x-2 text-gold">
+                        <FaAward className="text-xs" />
                         <span className="text-white">EST. 2015</span>
                     </div>
 
-                    <div className="flex items-center space-x-1.5">
-                        <FaUsers className="text-luxury-purple-light text-sm" />
-                        <span>Trusted By Millions</span>
+                    <div className="flex items-center space-x-2">
+                        <FaUsers className="text-gold text-xs" />
+                        <span className="text-accent-soft">Global Patronage</span>
                     </div>
 
-                    <div className="flex items-center space-x-1.5 hidden sm:flex">
-                        <span className="text-luxury-purple-light">🔥 1 Crore+</span>
-                        <span>Photos Printed</span>
+                    <div className="flex items-center space-x-2 hidden sm:flex">
+                        <span className="text-gold animate-pulse">✨ 1 Crore+</span>
+                        <span className="text-accent-soft">Masterpieces Created</span>
                     </div>
 
-                    <div className="flex items-center space-x-1.5 hidden lg:flex">
-                        <FaGem className="text-luxury-purple-light text-sm" />
-                        <span>Crafted With Premium Materials</span>
+                    <div className="flex items-center space-x-2 hidden lg:flex">
+                        <FaGem className="text-gold text-xs" />
+                        <span className="text-accent-soft">Premium Curation</span>
                     </div>
 
-                    <div className="flex items-center space-x-1.5 hidden xl:flex">
-                        <FaUserTie className="text-luxury-purple-light text-sm" />
-                        <span>Professional Editing</span>
+                    <div className="flex items-center space-x-2 hidden xl:flex">
+                        <FaUserTie className="text-gold text-xs" />
+                        <span className="text-accent-soft">Artisan Review</span>
                     </div>
                 </div>
             </div>

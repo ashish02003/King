@@ -31,45 +31,47 @@ const Login = () => {
     };
 
     return (
-        <div className="h-[100vh] flex items-center justify-center bg-luxury-cream font-sans p-6">
-            <div className="w-full max-w-5xl flex bg-white rounded-[40px] shadow-[0_40px_100px_rgba(0,0,0,0.04)] overflow-hidden border border-luxury-cream relative">
-                {/* Back Button - Inside Container */}
+        <div className="min-h-screen flex items-center justify-center bg-primary-dark p-6 relative overflow-hidden">
+            {/* Background */}
+            <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-gold/[0.04] rounded-full blur-[140px]"></div>
+            <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-accent-purple/10 rounded-full blur-[120px]"></div>
+
+            <div className="w-full max-w-5xl flex bg-primary rounded-luxury shadow-card overflow-hidden border border-white/[0.06] relative animate-fadeIn">
+                {/* Back Button */}
                 <button
                     onClick={() => navigate('/')}
-                    className="absolute top-6 left-6 flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-luxury-gold transition-colors group z-50"
+                    className="absolute top-7 left-7 flex items-center gap-2.5 text-[11px] font-semibold text-white/40 uppercase tracking-[0.15em] hover:text-gold transition-all group z-50"
                 >
-                    <div className="w-7 h-7 rounded-full border border-luxury-cream flex items-center justify-center group-hover:border-luxury-gold/20 transition-all bg-white shadow-sm">
-                        <FaArrowLeft size={8} />
-                    </div>
-                    <span className="hidden sm:inline">Back</span>
+                    <FaArrowLeft size={10} className="group-hover:-translate-x-1 transition-transform" />
+                    <span>Back</span>
                 </button>
 
                 {/* Left Side: Form */}
-                <div className="w-full lg:w-1/2 p-10 md:p-16">
-                    <div className="mb-6 pt-4">
-                        <Link to="/" className="inline-block transform hover:scale-105 transition-transform"><Logo /></Link>
-                        <h1 className="text-3xl font-[900] text-slate-900 mt-4 mb-1 tracking-tight">Welcome Back</h1>
-                        <p className="text-slate-500 font-medium">Please enter your details to sign in</p>
+                <div className="w-full lg:w-1/2 p-12 md:p-16 lg:p-20">
+                    <div className="mb-10">
+                        <Logo />
+                        <h1 className="text-3xl md:text-4xl font-serif text-white mt-8 mb-2">Welcome Back</h1>
+                        <p className="text-white/40 text-sm">Sign in to your account to continue</p>
                     </div>
 
                     {error && (
-                        <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-2xl text-sm font-bold mb-6 flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-luxury text-sm mb-6 flex items-center gap-2 animate-fadeIn">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
                             {error}
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-3">
-                        <div className="space-y-1">
-                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-medium text-white/40 uppercase tracking-wider ml-1">Email</label>
                             <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400 group-focus-within:text-luxury-gold transition-colors">
-                                    <FaEnvelope size={14} />
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-white/30 group-focus-within:text-gold transition-colors">
+                                    <FaEnvelope size={13} />
                                 </div>
                                 <input
                                     type="email"
-                                    className="w-full pl-8 pr-4 py-2 bg-slate-50 border border-slate-200 rounded outline-none focus:ring-4 focus:ring-luxury-gold/10 focus:border-luxury-gold transition-all font-medium text-slate-700"
-                                    placeholder="your@email.com"
+                                    className="input-luxury w-full pl-11"
+                                    placeholder="you@example.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
@@ -79,16 +81,16 @@ const Login = () => {
 
                         <div className="space-y-1.5">
                             <div className="flex justify-between items-center ml-1">
-                                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Password</label>
-                                <Link to="/forgot-password" size={12} className="text-[11px] font-black text-luxury-gold uppercase tracking-widest hover:underline">Forgot?</Link>
+                                <label className="text-[11px] font-medium text-white/40 uppercase tracking-wider">Password</label>
+                                <Link to="/" className="text-[11px] font-medium text-gold hover:underline">Forgot?</Link>
                             </div>
                             <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400 group-focus-within:text-luxury-gold transition-colors">
-                                    <FaLock size={14} />
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-white/30 group-focus-within:text-gold transition-colors">
+                                    <FaLock size={13} />
                                 </div>
                                 <input
                                     type="password"
-                                    className="w-full pl-8 pr-4 py-2 bg-slate-50 border border-slate-200 rounded outline-none focus:ring-4 focus:ring-luxury-gold/10 focus:border-luxury-gold transition-all font-medium text-slate-700"
+                                    className="input-luxury w-full pl-11"
                                     placeholder="••••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
@@ -100,44 +102,38 @@ const Login = () => {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-luxury-charcoal text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-luxury-gold transition-all active:scale-[0.98] shadow-xl shadow-luxury-charcoal/20 flex items-center justify-center gap-2 group disabled:opacity-70"
+                            className="btn-gold w-full flex items-center justify-center gap-2.5 mt-2 disabled:opacity-50"
                         >
                             {isLoading ? 'Signing in...' : 'Sign In'}
-                            {!isLoading && <FaArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />}
+                            {!isLoading && <FaArrowRight size={11} />}
                         </button>
                     </form>
 
-                    <div className="mt-2 pt-2 border-t border-slate-100">
-                        <p className="text-center text-sm font-medium text-slate-500">
-                            Don't have an account? <Link to="/register" className="text-luxury-purple font-black hover:underline ml-1">Create Account</Link>
+                    <div className="mt-10 pt-6 border-t border-white/[0.06]">
+                        <p className="text-center text-sm text-white/40">
+                            Don't have an account? <Link to="/register" className="text-gold font-semibold hover:underline ml-1">Create one</Link>
                         </p>
                     </div>
                 </div>
 
                 {/* Right Side: Visual */}
-                <div className="hidden lg:flex w-1/2 bg-luxury-purple-dark relative p-16 items-center flex-col justify-center overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-full">
-                        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-luxury-purple rounded-full blur-[120px] opacity-10"></div>
-                        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-luxury-purple-light rounded-full blur-[120px] opacity-10"></div>
+                <div className="hidden lg:flex lg:w-1/2 bg-primary-light relative p-16 flex-col justify-center items-center overflow-hidden">
+                    <div className="absolute inset-0">
+                         <img
+                            src="https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&q=80&w=800"
+                            className="w-full h-full object-cover opacity-15"
+                            alt="Background"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary via-transparent to-primary"></div>
                     </div>
 
-                    <div className="relative z-10 text-center">
-                        <div className="w-[16rem] h-20 bg-white/10 backdrop-blur-3xl rounded-3xl flex items-center justify-center mx-auto mb-10 border border-white/20 shadow-2xl">
-                            <Logo className="scale-150" />
+                    <div className="relative z-10 text-center space-y-6">
+                        <div className="w-20 h-20 bg-gold/10 backdrop-blur-xl border border-gold/20 rounded-luxury flex items-center justify-center mx-auto">
+                             <Logo />
                         </div>
-                        <h2 className="text-4xl font-[900] text-white tracking-tight mb-6 leading-tight">Craft Your <br /><span className="text-luxury-purple-light">Perfect Story</span></h2>
-                        <p className="text-luxury-purple-light/60 font-medium text-lg max-w-sm mx-auto">Join thousands of creators who turn imagination into reality every single day.</p>
-
-
-                        <div className="mt-12 flex items-center justify-center gap-6">
-                            <div className="flex -space-x-3">
-                                {[1, 2, 3, 4].map(i => (
-                                    <div key={i} className="w-10 h-10 rounded-full border-2 border-[#0b1e3b] bg-slate-800 overflow-hidden ring-1 ring-white/10">
-                                        <img src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="avatar" />
-                                    </div>
-                                ))}
-                            </div>
-                            <p className="text-white/50 text-xs font-black uppercase tracking-widest">10k+ Members</p>
+                        <div className="space-y-3">
+                            <h2 className="text-3xl font-serif text-white tracking-tight leading-tight">Craft Your <br /><span className="text-gold italic">Memories</span></h2>
+                            <p className="text-white/40 text-sm max-w-xs mx-auto">Personalized products designed to preserve your most cherished moments.</p>
                         </div>
                     </div>
                 </div>

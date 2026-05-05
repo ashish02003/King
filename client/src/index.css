@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,128 +6,83 @@
 
 @layer base {
     :root {
-        --lux-bg: #FAF9F6;
-        --lux-fg: #30174D;
-        --lux-primary: #563C8C;
-        --lux-accent: #A68A56;
-        --lux-border: #E2E8F0;
-        --lux-surface: #FAF9F6;
-
-        /* Screenshot Colors */
-        --lux-green: #4A5D48;
-        --lux-blue: #1B2B52;
-        --lux-red: #720E17;
-        --lux-gold: #A68A56;
-        --lux-purple: #563C8C;
+        --lux-bg: #0F0B1F;
+        --lux-bg-light: #1A1333;
+        --lux-gold: #C9A14A;
+        --lux-gold-light: #E6C77B;
+        --lux-text: #FFFFFF;
+        --lux-text-soft: #B8B8C0;
+        --lux-accent: #422D6B;
     }
 
     body {
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        @apply text-luxury-charcoal bg-white antialiased;
-        background-color: var(--lux-bg);
-        color: var(--lux-fg);
+        @apply bg-primary-dark text-white antialiased;
+        font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
 
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6 {
+    ::selection {
+        background: #C9A14A;
+        color: #0F0B1F;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
         @apply font-serif;
         letter-spacing: -0.02em;
     }
 }
 
-@layer utilities {
-    .bg-luxury-gradient {
-        background: linear-gradient(135deg, var(--lux-primary) 0%, #1e3a5f 100%);
+@layer components {
+    .btn-gold {
+        @apply bg-gradient-to-r from-gold-dark via-gold to-gold-light text-primary-dark font-bold py-3 px-8 rounded-luxury transition-all duration-300 hover:shadow-glow hover:-translate-y-0.5 active:scale-[0.98] uppercase tracking-[0.15em] text-xs;
     }
 
-    .luxury-shadow {
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+    .btn-outline {
+        @apply border border-gold/40 text-gold font-bold py-3 px-8 rounded-luxury transition-all duration-300 hover:bg-gold/10 hover:border-gold active:scale-[0.98] uppercase tracking-[0.15em] text-xs;
     }
 
-    .premium-border {
-        border: 1px solid rgba(191, 167, 93, 0.2);
+    .luxury-card {
+        @apply bg-primary rounded-luxury border border-white/[0.06] hover:border-gold/20 transition-all duration-500 overflow-hidden;
     }
 
-    .gold-text {
-        color: var(--lux-gold);
-    }
-
-    .fraunces {
-        font-family: 'Fraunces', serif;
+    .input-luxury {
+        @apply bg-primary-light border border-white/10 rounded-luxury px-4 py-3.5 text-white focus:border-gold/60 outline-none transition-all duration-300 placeholder:text-white/30 text-sm;
     }
 }
 
 @layer utilities {
-    .text-strike {
-        text-decoration: line-through;
+    .bg-luxury-purple {
+        background-color: var(--lux-bg);
     }
 
-    .browse-section {
-        @apply transition-all duration-300 rounded-[2rem] p-6 md:p-10 mb-12;
-    }
-}
-
-
-@layer utilities {
-    .hover-grow {
-        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-
-    .hover-grow:hover {
-        transform: scale(1.05);
-    }
-}
-
-
-
-@layer utilities {
-    .animate-fadeIn {
-        animation: fadeIn 0.4s ease-out forwards;
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    @keyframes float {
-        0% {
-            transform: translate(0, 0) rotate(0deg) scale(1);
-        }
-
-        33% {
-            transform: translate(5vw, 5vh) rotate(120deg) scale(1.1);
-        }
-
-        66% {
-            transform: translate(-2vw, 10vh) rotate(240deg) scale(0.9);
-        }
-
-        100% {
-            transform: translate(0, 0) rotate(360deg) scale(1);
-        }
+    .backdrop-blur-luxury {
+        backdrop-filter: blur(16px) saturate(180%);
+        -webkit-backdrop-filter: blur(16px) saturate(180%);
     }
 
     .animate-float {
-        animation: float 25s infinite linear;
+        animation: float 6s ease-in-out infinite;
     }
 
-    .luxury-blob {
-        @apply absolute w-[500px] h-[500px] rounded-full mix-blend-multiply filter blur-[100px] opacity-[0.08] transition-all duration-1000;
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
     }
 
-    /* Hide scrollbar but keep scroll functionality */
+    .animate-fadeIn {
+        animation: fadeIn 0.5s ease-out forwards;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-fadeInSlow {
+        animation: fadeIn 0.8s ease-out forwards;
+    }
+
     .scrollbar-hide {
         -ms-overflow-style: none;
         scrollbar-width: none;
