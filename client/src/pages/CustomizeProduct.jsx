@@ -45,7 +45,9 @@ const CustomizeProduct = () => {
     const [slotAssets, setSlotAssets] = useState({
         left: { imageUrl: null, text: '', shapeType: null, transform: null },
         center: { imageUrl: null, text: '', shapeType: null, transform: null },
-        right: { imageUrl: null, text: '', shapeType: null, transform: null }
+        right: { imageUrl: null, text: '', shapeType: null, transform: null },
+        front: { imageUrl: null, text: '', shapeType: null, transform: null },
+        back: { imageUrl: null, text: '', shapeType: null, transform: null }
     });
 
     const { user } = useAuth();
@@ -62,7 +64,37 @@ const CustomizeProduct = () => {
         return catLower.includes('mug') || catLower.includes('sipper') || catLower.includes('bottle') || catLower.includes('planter') ||
             template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'planter';
     })();
-    const editorSides = isStrictWrapShapeCategory ? ['left', 'center', 'right'] : ['center'];
+    // ── New flat product category detectors ──────────────────────────────
+    const catLowerGlobal = (template?.category || '').toLowerCase();
+    const isKeychain = catLowerGlobal.includes('keychain');
+    const isCoaster = catLowerGlobal.includes('coaster');
+    const isFridgeMagnet = catLowerGlobal.includes('fridge') || catLowerGlobal.includes('magnet');
+    const isIronOnSticker = catLowerGlobal.includes('iron') || catLowerGlobal.includes('sticker');
+    const isFlatProduct = isKeychain || isCoaster || isFridgeMagnet || isIronOnSticker;
+
+    const editorSides = isStrictWrapShapeCategory
+        ? ['left', 'center', 'right']
+        : (isKeychain || isCoaster ? ['front', 'back'] : ['center']);
+
+    // Determine if the product's shape is circular (Round variants)
+    const isCircularVariant = (() => {
+        const n = (template?.name || '').toLowerCase();
+        const v = (template?.variantNo || '').toLowerCase();
+        return n.includes('round') || v.includes('round');
+    })();
+
+    // Determine if the product's shape is heart-shaped (Heart variants)
+    const isHeartVariant = (() => {
+        const n = (template?.name || '').toLowerCase();
+        return n.includes('heart');
+    })();
+
+    // MOQ step: Coasters have steps of 2/4/6/8, Iron on Stickers in multiples of 4
+    const moqStep = (() => {
+        if (isCoaster) return 2;         // 2, 4, 6, 8 …
+        if (isIronOnSticker) return 4;   // 20, 24, 28 …
+        return 1;
+    })();
     const parsePrintSize = (raw) => {
         if (!raw) return null;
         const nums = String(raw).match(/[\d.]+/g)?.map(Number).filter((n) => Number.isFinite(n)) || [];
@@ -194,10 +226,44 @@ const CustomizeProduct = () => {
         const catL = (template.category || '').toLowerCase();
         const isWrap = catL.includes('mug') || catL.includes('sipper') || catL.includes('bottle') || catL.includes('planter') || template.wrapType === 'mug' || template.wrapType === 'bottle' || template.wrapType === 'planter';
         const isPureWrapEditor = catL.includes('mug') || catL.includes('sipper') || catL.includes('bottle') || catL.includes('planter') || template.wrapType === 'mug' || template.wrapType === 'bottle' || template.wrapType === 'planter';
+        const isFlatProduct = catL.includes('keychain') || catL.includes('coaster') || catL.includes('fridge') || catL.includes('magnet') || catL.includes('iron') || catL.includes('sticker');
 
         // Set dimensions: Based on printSize ratio for ALL products
         const wrapCanvasWidth = editorCanvasCssWidth;
         const wrapCanvasHeight = editorCanvasCssHeight;
+
+        // ── Flat product canvas sizing (Keychain, Coaster, Magnet, Sticker) ──
+        const isFlatCat = catL.includes('keychain') || catL.includes('coaster') ||
+            catL.includes('fridge') || catL.includes('magnet') ||
+            catL.includes('iron') || catL.includes('sticker');
+
+        let flatCanvasWidth = 320;
+        let flatCanvasHeight = 320;
+        if (isFlatCat && printSizeMm) {
+            const ratio = printSizeMm.widthMm / Math.max(1, printSizeMm.heightMm);
+            // Keep it compact and square-ish — max 380px
+            if (ratio >= 0.9 && ratio <= 1.1) {
+                // Nearly square (coasters, round/square keychains, magnets)
+                flatCanvasWidth = 320;
+                flatCanvasHeight = 320;
+            } else if (ratio < 0.9) {
+                // Portrait (tall stickers etc.)
+                flatCanvasHeight = 380;
+                flatCanvasWidth = Math.round(380 * ratio);
+            } else {
+                // Landscape (wide stickers)
+                flatCanvasWidth = 380;
+                flatCanvasHeight = Math.round(380 / ratio);
+            }
+            // Floor to sensible min
+            flatCanvasWidth = Math.max(200, flatCanvasWidth);
+            flatCanvasHeight = Math.max(200, flatCanvasHeight);
+        } else if (isFlatCat) {
+            // No printSize defined – use a compact square
+            flatCanvasWidth = 300;
+            flatCanvasHeight = 300;
+        }
+
         // Non-wrap: derive portrait/landscape canvas from printSize, else default 380x520
         const nonWrapRatio = printSizeMm ? (printSizeMm.widthMm / Math.max(1, printSizeMm.heightMm)) : (380 / 520);
         const nonWrapCanvasWidth = printSizeMm
@@ -206,8 +272,15 @@ const CustomizeProduct = () => {
         const nonWrapCanvasHeight = printSizeMm
             ? Math.round(Math.min(520, Math.max(200, nonWrapCanvasWidth / Math.max(0.3, nonWrapRatio))))
             : 520;
-        const canvasWidth = isWrap ? wrapCanvasWidth : nonWrapCanvasWidth;
-        const canvasHeight = isWrap ? wrapCanvasHeight : nonWrapCanvasHeight;
+
+        let canvasWidth, canvasHeight;
+        if (isWrap) {
+            canvasWidth = wrapCanvasWidth;
+            canvasHeight = wrapCanvasHeight;
+        } else {
+            canvasWidth = nonWrapCanvasWidth;
+            canvasHeight = nonWrapCanvasHeight;
+        }
 
         const initCanvas = new fabric.Canvas(canvasRef.current, {
             height: canvasHeight,
@@ -329,30 +402,18 @@ const CustomizeProduct = () => {
 
         const handleObjectModified = (e) => {
             const obj = e.target;
-            if (isPureWrapEditor && obj && (obj.role === 'free-image' || obj.role === 'side-text' || obj.role === 'editor-scene-background')) {
-                setTimeout(() => {
-                    const allObjects = initCanvas.getObjects();
-                    const designObjects = allObjects.filter((o) =>
-                        o.role === 'clipped-image' ||
-                        o.role === 'free-image' ||
-                        o.role === 'side-text' ||
-                        (o.type === 'i-text' && o.role !== 'placeholder-label')
-                    );
-                    const envObjects = allObjects.filter((o) => !designObjects.includes(o));
-                    const originalVis = envObjects.map((o) => ({ obj: o, visible: o.visible }));
-                    const originalBg = initCanvas.backgroundColor;
-                    envObjects.forEach((o) => o.set('visible', false));
-                    initCanvas.set('backgroundColor', null);
-                    initCanvas.discardActiveObject();
-                    initCanvas.renderAll();
-                    const snapshot = initCanvas.toDataURL({ multiplier: 2, format: 'png' });
-                    setPreviewImage(snapshot);
-                    setMugPreviewUrl(snapshot);
-                    setShowMugPreview(true);
-                    originalVis.forEach((item) => item.obj.set('visible', item.visible));
-                    initCanvas.set('backgroundColor', originalBg);
-                    initCanvas.renderAll();
-                }, 0);
+
+            // ── Text resize: convert scale → fontSize on mouse-up so resize feels smooth ──
+            if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+                const newSize = Math.max(6, Math.round(obj.fontSize * Math.max(obj.scaleX, obj.scaleY)));
+                obj.set({ fontSize: newSize, scaleX: 1, scaleY: 1 });
+                obj.setCoords();
+                setSelectedObject((prev) => (prev === obj || prev?.oCoords === obj?.oCoords) ? { ...obj, fontSize: newSize } : prev);
+                setTimeout(() => syncWrapPreviewFromCanvas(false, initCanvas), 0);
+            }
+
+            if (isPureWrapEditor || isFlatProduct) {
+                setTimeout(() => syncWrapPreviewFromCanvas(false, initCanvas), 0);
             }
             if (obj && obj.role === 'clipped-image' && obj.maskRef) {
                 syncClipPathToPlaceholder(obj);
@@ -442,18 +503,47 @@ const CustomizeProduct = () => {
                         const originalBg = initCanvas.backgroundColor;
                         envObjects.forEach((o) => o.set('visible', false));
                         initCanvas.set('backgroundColor', null);
-                        initCanvas.discardActiveObject();
+                        const activeObj = initCanvas.getActiveObject();
+                        let controlsVis = true;
+                        if (activeObj) {
+                            controlsVis = activeObj.hasControls;
+                            activeObj.set({ hasControls: false, hasBorders: false });
+                        }
                         initCanvas.renderAll();
-                        const snapshot = initCanvas.toDataURL({ multiplier: 2, format: 'png' });
+
+                        const snapshot = initCanvas.toDataURL({ multiplier: 1, format: 'png' });
                         setPreviewImage(snapshot);
                         setMugPreviewUrl(snapshot);
                         setShowMugPreview(true);
+
                         originalVis.forEach((item) => item.obj.set('visible', item.visible));
                         initCanvas.set('backgroundColor', originalBg);
+
+                        if (activeObj) {
+                            activeObj.set({ hasControls: controlsVis, hasBorders: true });
+                        }
                         initCanvas.renderAll();
                     }, 0);
                 }
             }
+        });
+
+        // ── Restore resize handles after user finishes typing ──────────────────
+        // When IText is in edit mode (double-click), Fabric hides all scale handles.
+        // On exit we must re-apply them so the user can resize again.
+        initCanvas.on('text:editing:exited', (e) => {
+            const obj = e.target;
+            if (!obj) return;
+            obj.set({ hasControls: true, hasBorders: true });
+            obj.setControlsVisibility({
+                mt: true, mb: true, ml: true, mr: true,
+                tl: true, tr: true, bl: true, br: true,
+                mtr: true
+            });
+            // Re-select so the handles render immediately
+            initCanvas.setActiveObject(obj);
+            initCanvas.requestRenderAll();
+            setSelectedObject({ ...obj });   // refresh React state so sidebar shows updated text
         });
         initCanvas.on('object:moving', (e) => {
             handleImageTransformation(e);
@@ -477,45 +567,51 @@ const CustomizeProduct = () => {
             }
 
             // Live preview update during move
-            if (isPureWrapEditor) {
+            if (isPureWrapEditor || isFlatProduct) {
                 if (initCanvas._liveSyncTimeout) clearTimeout(initCanvas._liveSyncTimeout);
-                initCanvas._liveSyncTimeout = setTimeout(() => syncWrapPreviewFromCanvas(true), 50);
+                initCanvas._liveSyncTimeout = setTimeout(() => syncWrapPreviewFromCanvas(true, initCanvas), 10);
             }
         });
         initCanvas.on('object:scaling', (e) => {
             handleImageTransformation(e);
             if (e.target && e.target.role === 'placeholder') syncLabelToPlaceholder(e.target);
-            
+
             // Live preview update during scale
-            if (isPureWrapEditor) {
+            if (isPureWrapEditor || isFlatProduct) {
                 if (initCanvas._liveSyncTimeout) clearTimeout(initCanvas._liveSyncTimeout);
-                initCanvas._liveSyncTimeout = setTimeout(() => syncWrapPreviewFromCanvas(true), 50);
+                initCanvas._liveSyncTimeout = setTimeout(() => syncWrapPreviewFromCanvas(true, initCanvas), 10);
             }
         });
-        initCanvas.on('object:rotating', (e) => {
-            if (e.target && e.target.role === 'placeholder') syncLabelToPlaceholder(e.target);
+        initCanvas.on('object:scaling', (e) => {
+            const obj = e.target;
+            if (obj && obj.role === 'placeholder') syncLabelToPlaceholder(obj);
+            // Live preview during scale for wrap/flat products
+            if (isPureWrapEditor || isFlatProduct) {
+                if (initCanvas._liveSyncTimeout) clearTimeout(initCanvas._liveSyncTimeout);
+                initCanvas._liveSyncTimeout = setTimeout(() => syncWrapPreviewFromCanvas(true, initCanvas), 10);
+            }
         });
         initCanvas.on('object:modified', handleObjectModified);
 
         // Keyboard Delete Logic
         const handleKeyDown = (e) => {
-            // CRITICAL FIX: Ignore delete/backspace if user is typing in ANY input or textarea
-            const isTyping = e.target.tagName === 'INPUT' ||
-                e.target.tagName === 'TEXTAREA' ||
-                e.target.isContentEditable;
+            // Bulletproof check for active input/textarea
+            const activeTag = document.activeElement?.tagName;
+            const isTyping = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || document.activeElement?.isContentEditable;
 
             if (isTyping) return;
 
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 const activeObj = initCanvas.getActiveObject();
+                // ONLY delete if we are NOT in text editing mode
                 if (activeObj && !activeObj.isEditing) {
                     if (activeObj.locked === true || activeObj.locked === 'true' || activeObj.role === 'placeholder') {
                         toast.error("Admin elements cannot be deleted");
                         e.preventDefault();
                         return;
                     }
-                    // RESTORE PLACEHOLDER IF DELETING CLIPPED IMAGE OR GROUP
-                    if ((activeObj.role === 'clipped-image' || activeObj.role === 'image-group') && activeObj.maskRef) {
+                    // RESTORE PLACEHOLDER IF DELETING CLIPPED IMAGE
+                    if ((activeObj.role === 'clipped-image') && activeObj.maskRef) {
                         const mask = activeObj.maskRef;
                         mask.set({ visible: true, selectable: true, evented: true });
                         const label = initCanvas.getObjects().find(obj =>
@@ -528,11 +624,22 @@ const CustomizeProduct = () => {
                     initCanvas.remove(activeObj);
                     initCanvas.renderAll();
                     setSelectedObject(null);
+                    // Sync 3D preview after deletion
+                    if (typeof syncWrapPreviewFromCanvas === 'function') {
+                        setTimeout(() => syncWrapPreviewFromCanvas(), 100);
+                    }
                 }
             }
         };
 
-        window.addEventListener('keydown', handleKeyDown);
+        const handleKeyDownWrapper = (e) => handleKeyDown(e);
+        window.addEventListener('keydown', handleKeyDownWrapper);
+
+        const cleanup = () => {
+            window.removeEventListener('keydown', handleKeyDownWrapper);
+            if (initCanvas._liveSyncTimeout) clearTimeout(initCanvas._liveSyncTimeout);
+            initCanvas.dispose();
+        };
 
         initCanvas.on('mouse:down', (opt) => {
             if (opt.target) {
@@ -560,6 +667,9 @@ const CustomizeProduct = () => {
 
         const setupTemplate = async () => {
             // Wrap editor uses print-area canvas directly, so we skip product/mockup images here.
+            // For Flat Products (Keychains, Coasters, etc), we ALSO skip the background image here,
+            // because we want the Canvas to ONLY show the print area (the placeholder shape).
+            // The background product image will instead be rendered via CSS on the Left-Side Preview.
             if (template.backgroundImageUrl && !isPureWrapEditor) {
                 try {
                     const isWebUrl = template.backgroundImageUrl.startsWith('http');
@@ -719,10 +829,12 @@ const CustomizeProduct = () => {
                             item.shapeType = item.shapeType || (item.type === 'circle' ? 'circle' : 'rectangle');
                             item.slot = placeholderSlot;
 
+                            let w = item.type === 'path' && item.getBoundingRect ? item.getBoundingRect().width : (item.width * (item.scaleX || 1));
+                            let h = item.type === 'path' && item.getBoundingRect ? item.getBoundingRect().height : (item.height * (item.scaleY || 1));
+
                             const center = (typeof item.getCenterPoint === 'function' ? item.getCenterPoint() : null) || { x: item.left, y: item.top };
                             const labelId = `label_${item.id}`;
-                            const w = item.type === 'path' && item.getBoundingRect ? item.getBoundingRect().width : (item.width * (item.scaleX || 1));
-                            const h = item.type === 'path' && item.getBoundingRect ? item.getBoundingRect().height : (item.height * (item.scaleY || 1));
+
                             // Simplified blue text label centered in the gray shape
                             const label = new fabric.IText('Select\nPhoto', {
                                 fontSize: Math.max(12, Math.min(w || 80, h || 80) / 6),
@@ -743,6 +855,7 @@ const CustomizeProduct = () => {
                             });
                             initCanvas.add(item, label);
                         } else {
+
                             // Let the user edit text objects (like 'Write Your Text') provided by the admin
                             if (item.type === 'i-text' || item.type === 'text' || item.type === 'textbox') {
                                 item.set({ selectable: true, evented: true, editable: true, hoverCursor: 'text' });
@@ -755,6 +868,11 @@ const CustomizeProduct = () => {
                     initCanvas.renderAll();
                     if (initCanvas.productImage) initCanvas.sendObjectToBack(initCanvas.productImage);
                 } catch (e) { console.error(e); }
+            }
+
+            // Trigger initial preview sync for flat products to show the mockup immediately
+            if (isFlatProduct || isPureWrapEditor) {
+                setTimeout(() => syncWrapPreviewFromCanvas(false, initCanvas), 800);
             }
         };
 
@@ -773,6 +891,62 @@ const CustomizeProduct = () => {
     }, [template?._id]);
 
     // Helpers
+    const handleDeleteSelected = () => {
+        if (!canvas) return;
+        const activeObj = canvas.getActiveObject();
+        if (!activeObj) return;
+
+        if (activeObj.locked === true || activeObj.locked === 'true' || activeObj.role === 'placeholder') {
+            toast.error("Admin elements cannot be deleted");
+            return;
+        }
+
+        // RESTORE PLACEHOLDER IF DELETING CLIPPED IMAGE
+        if (activeObj.role === 'clipped-image' && activeObj.maskRef) {
+            const mask = activeObj.maskRef;
+            mask.set({ visible: true, selectable: true, evented: true });
+            const label = canvas.getObjects().find(obj =>
+                obj.role === 'placeholder-label' &&
+                (obj.placeholderRef === mask || obj.id === `label_${mask.id}`)
+            );
+            if (label) label.set({ visible: true });
+        }
+
+        canvas.remove(activeObj);
+        canvas.renderAll();
+        setSelectedObject(null);
+        if (typeof syncWrapPreviewFromCanvas === 'function') {
+            syncWrapPreviewFromCanvas();
+        }
+    };
+
+    const handleObjectForward = () => {
+        if (!canvas || !selectedObject) return;
+        canvas.bringObjectForward(selectedObject);
+        canvas.renderAll();
+        if (typeof syncWrapPreviewFromCanvas === 'function') syncWrapPreviewFromCanvas();
+    };
+
+    const handleObjectBackward = () => {
+        if (!canvas || !selectedObject) return;
+        canvas.sendObjectBackward(selectedObject);
+        canvas.renderAll();
+        if (typeof syncWrapPreviewFromCanvas === 'function') syncWrapPreviewFromCanvas();
+    };
+
+    const handleObjectDuplicate = async () => {
+        if (!canvas || !selectedObject) return;
+        if (selectedObject.role === 'placeholder') return toast.error("Admin elements cannot be duplicated");
+        const cloned = await selectedObject.clone();
+        cloned.set({
+            left: selectedObject.left + 20,
+            top: selectedObject.top + 20
+        });
+        canvas.add(cloned);
+        canvas.setActiveObject(cloned);
+        canvas.renderAll();
+        if (typeof syncWrapPreviewFromCanvas === 'function') syncWrapPreviewFromCanvas();
+    };
     const addToCanvas = (obj) => {
         if (!canvas) return;
         obj.set({
@@ -1018,13 +1192,33 @@ const CustomizeProduct = () => {
     }, [customizationMode, photoSide, shapeTargetSlot, isWrapProduct, uploadShapeBySlot, isStrictWrapShapeCategory]);
 
     useEffect(() => {
-        if (!isStrictWrapShapeCategory) return;
+        if (!isStrictWrapShapeCategory && !isFlatProduct) return;
         setCustomizationMode('wrapPhotos');
         setPhotoSide(editorSide);
         setTextSide(editorSide);
         setShapeTargetSlot(editorSide);
         setActiveUploadSlot(editorSide);
-    }, [editorSide, isStrictWrapShapeCategory]);
+    }, [editorSide, isStrictWrapShapeCategory, isFlatProduct]);
+
+    // Multi-side visibility management for Flat Products
+    useEffect(() => {
+        if (!canvas || !isFlatProduct || isStrictWrapShapeCategory) return;
+
+        const allObjects = canvas.getObjects();
+        allObjects.forEach(obj => {
+            // Keep admin elements always visible
+            if (obj.role === 'placeholder' || obj.role === 'placeholder-label' || obj.role === 'editor-scene-background') {
+                obj.set('visible', true);
+            } else {
+                // Design objects: match their sideSlot to current editorSide
+                // Default to 'front' if no sideSlot assigned yet
+                const objSide = obj.sideSlot || 'front';
+                obj.set('visible', (objSide === editorSide || (editorSide === 'center' && objSide === 'front')));
+            }
+        });
+        canvas.renderAll();
+        if (typeof syncWrapPreviewFromCanvas === 'function') syncWrapPreviewFromCanvas();
+    }, [editorSide, canvas, isFlatProduct, isStrictWrapShapeCategory]);
 
     useEffect(() => {
         if (!selectedObject) return;
@@ -1369,7 +1563,7 @@ const CustomizeProduct = () => {
                 const is3D = catL.includes('mug') || catL.includes('sipper') || catL.includes('bottle') || catL.includes('planter') || catL.includes('case') || nameL.includes('mug') ||
                     template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'planter' || template?.wrapType === 'phone';
 
-                if (is3D) {
+                if (is3D || isFlatProduct) {
                     setTimeout(() => {
                         if (canvas) {
                             // 1. Capture FULL VIEW for display
@@ -1378,47 +1572,49 @@ const CustomizeProduct = () => {
                             const fullView = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 2 });
                             setPreviewImage(fullView);
 
-                            // 2. Capture DESIGN ONLY for 3D mapping (Transparent & Cropped)
-                            const allObjects = canvas.getObjects();
-                            const designObjects = allObjects.filter(o =>
-                                o.role === 'clipped-image' ||
-                                o.role === 'side-text' ||
-                                o.role === 'free-image' ||
-                                (o.type === 'i-text' && o.role !== 'placeholder-label')
-                            );
-                            const nonDesignObjects = allObjects.filter(o => !designObjects.includes(o));
-                            const originalVis = nonDesignObjects.map(o => ({ obj: o, visible: o.visible }));
-                            const originalBg = canvas.backgroundColor;
+                            // 2. For 3D products, also capture DESIGN ONLY for 3D mapping
+                            if (is3D) {
+                                const allObjects = canvas.getObjects();
+                                const designObjects = allObjects.filter(o =>
+                                    o.role === 'clipped-image' ||
+                                    o.role === 'side-text' ||
+                                    o.role === 'free-image' ||
+                                    (o.type === 'i-text' && o.role !== 'placeholder-label')
+                                );
+                                const nonDesignObjects = allObjects.filter(o => !designObjects.includes(o));
+                                const originalVis = nonDesignObjects.map(o => ({ obj: o, visible: o.visible }));
+                                const originalBg = canvas.backgroundColor;
 
-                            nonDesignObjects.forEach(o => o.set('visible', false));
-                            canvas.set('backgroundColor', null);
-                            canvas.renderAll();
+                                nonDesignObjects.forEach(o => o.set('visible', false));
+                                canvas.set('backgroundColor', null);
+                                canvas.renderAll();
 
-                            let exportOptions = { format: 'png', quality: 1, multiplier: 2 };
-                            if (designObjects.length > 0) {
-                                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                                designObjects.forEach(obj => {
-                                    const rect = obj.getBoundingRect(true);
-                                    minX = Math.min(minX, rect.left);
-                                    minY = Math.min(minY, rect.top);
-                                    maxX = Math.max(maxX, rect.left + rect.width);
-                                    maxY = Math.max(maxY, rect.top + rect.height);
-                                });
-                                const padding = 2;
-                                exportOptions.left = Math.max(0, minX - padding);
-                                exportOptions.top = Math.max(0, minY - padding);
-                                exportOptions.width = Math.min(canvas.width - exportOptions.left, (maxX - minX) + padding * 2);
-                                exportOptions.height = Math.min(canvas.height - exportOptions.top, (maxY - minY) + padding * 2);
+                                let exportOptions = { format: 'png', quality: 1, multiplier: 2 };
+                                if (designObjects.length > 0) {
+                                    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                                    designObjects.forEach(obj => {
+                                        const rect = obj.getBoundingRect(true);
+                                        minX = Math.min(minX, rect.left);
+                                        minY = Math.min(minY, rect.top);
+                                        maxX = Math.max(maxX, rect.left + rect.width);
+                                        maxY = Math.max(maxY, rect.top + rect.height);
+                                    });
+                                    const padding = 2;
+                                    exportOptions.left = Math.max(0, minX - padding);
+                                    exportOptions.top = Math.max(0, minY - padding);
+                                    exportOptions.width = Math.min(canvas.width - exportOptions.left, (maxX - minX) + padding * 2);
+                                    exportOptions.height = Math.min(canvas.height - exportOptions.top, (maxY - minY) + padding * 2);
+                                }
+
+                                const snapshot = canvas.toDataURL(exportOptions);
+                                setMugPreviewUrl(snapshot);
+                                setShowMugPreview(true);
+
+                                // Restore
+                                originalVis.forEach(item => item.obj.set('visible', item.visible));
+                                canvas.set('backgroundColor', originalBg);
+                                canvas.renderAll();
                             }
-
-                            const snapshot = canvas.toDataURL(exportOptions);
-                            setMugPreviewUrl(snapshot);
-                            setShowMugPreview(true);
-
-                            // Restore
-                            originalVis.forEach(item => item.obj.set('visible', item.visible));
-                            canvas.set('backgroundColor', originalBg);
-                            canvas.renderAll();
                         }
                     }, 250);
                 }
@@ -1650,7 +1846,7 @@ const CustomizeProduct = () => {
             const is3D = catL.includes('mug') || catL.includes('sipper') || catL.includes('bottle') || catL.includes('planter') || catL.includes('case') || nameL.includes('mug') ||
                 template?.wrapType === 'mug' || template?.wrapType === 'bottle' || template?.wrapType === 'planter' || template?.wrapType === 'phone';
 
-            if (is3D) {
+            if (is3D || isFlatProduct) {
                 // Wait briefly for canvas to finish updating, then take snapshots
                 setTimeout(() => {
                     if (canvas) {
@@ -1660,47 +1856,49 @@ const CustomizeProduct = () => {
                         const fullView = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 2 });
                         setPreviewImage(fullView);
 
-                        // 2. Capture DESIGN ONLY for 3D mapping (Transparent & Cropped)
-                        const allObjects = canvas.getObjects();
-                        const designObjects = allObjects.filter(o =>
-                            o.role === 'clipped-image' ||
-                            o.role === 'side-text' ||
-                            o.role === 'free-image' ||
-                            (o.type === 'i-text' && o.role !== 'placeholder-label')
-                        );
-                        const nonDesignObjects = allObjects.filter(o => !designObjects.includes(o));
-                        const originalVis = nonDesignObjects.map(o => ({ obj: o, visible: o.visible }));
-                        const originalBg = canvas.backgroundColor;
+                        // 2. For 3D products, also capture DESIGN ONLY for 3D mapping
+                        if (is3D) {
+                            const allObjects = canvas.getObjects();
+                            const designObjects = allObjects.filter(o =>
+                                o.role === 'clipped-image' ||
+                                o.role === 'side-text' ||
+                                o.role === 'free-image' ||
+                                (o.type === 'i-text' && o.role !== 'placeholder-label')
+                            );
+                            const nonDesignObjects = allObjects.filter(o => !designObjects.includes(o));
+                            const originalVis = nonDesignObjects.map(o => ({ obj: o, visible: o.visible }));
+                            const originalBg = canvas.backgroundColor;
 
-                        nonDesignObjects.forEach(o => o.set('visible', false));
-                        canvas.set('backgroundColor', null);
-                        canvas.renderAll();
+                            nonDesignObjects.forEach(o => o.set('visible', false));
+                            canvas.set('backgroundColor', null);
+                            canvas.renderAll();
 
-                        let exportOptions = { format: 'png', quality: 1, multiplier: 2 };
-                        if (designObjects.length > 0) {
-                            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                            designObjects.forEach(obj => {
-                                const rect = obj.getBoundingRect(true);
-                                minX = Math.min(minX, rect.left);
-                                minY = Math.min(minY, rect.top);
-                                maxX = Math.max(maxX, rect.left + rect.width);
-                                maxY = Math.max(maxY, rect.top + rect.height);
-                            });
-                            const padding = 2;
-                            exportOptions.left = Math.max(0, minX - padding);
-                            exportOptions.top = Math.max(0, minY - padding);
-                            exportOptions.width = Math.min(canvas.width - exportOptions.left, (maxX - minX) + padding * 2);
-                            exportOptions.height = Math.min(canvas.height - exportOptions.top, (maxY - minY) + padding * 2);
+                            let exportOptions = { format: 'png', quality: 1, multiplier: 2 };
+                            if (designObjects.length > 0) {
+                                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                                designObjects.forEach(obj => {
+                                    const rect = obj.getBoundingRect(true);
+                                    minX = Math.min(minX, rect.left);
+                                    minY = Math.min(minY, rect.top);
+                                    maxX = Math.max(maxX, rect.left + rect.width);
+                                    maxY = Math.max(maxY, rect.top + rect.height);
+                                });
+                                const padding = 2;
+                                exportOptions.left = Math.max(0, minX - padding);
+                                exportOptions.top = Math.max(0, minY - padding);
+                                exportOptions.width = Math.min(canvas.width - exportOptions.left, (maxX - minX) + padding * 2);
+                                exportOptions.height = Math.min(canvas.height - exportOptions.top, (maxY - minY) + padding * 2);
+                            }
+
+                            const snapshot = canvas.toDataURL(exportOptions);
+                            setMugPreviewUrl(snapshot);
+                            setShowMugPreview(true);
+
+                            // Restore visibility and background
+                            originalVis.forEach(item => item.obj.set('visible', item.visible));
+                            canvas.set('backgroundColor', originalBg);
+                            canvas.renderAll();
                         }
-
-                        const snapshot = canvas.toDataURL(exportOptions);
-                        setMugPreviewUrl(snapshot);
-                        setShowMugPreview(true);
-
-                        // Restore visibility and background
-                        originalVis.forEach(item => item.obj.set('visible', item.visible));
-                        canvas.set('backgroundColor', originalBg);
-                        canvas.renderAll();
                     }
                 }, 250);
             }
@@ -1962,9 +2160,10 @@ const CustomizeProduct = () => {
         }
     };
 
-    const syncWrapPreviewFromCanvas = (isInteractive = false) => {
-        if (!canvas) return;
-        const allObjects = canvas.getObjects();
+    const syncWrapPreviewFromCanvas = (isInteractive = false, targetCanvas = null) => {
+        const activeCanvas = targetCanvas || canvas;
+        if (!activeCanvas) return;
+        const allObjects = activeCanvas.getObjects();
         const designObjects = allObjects.filter((o) =>
             o.role === 'clipped-image' ||
             o.role === 'free-image' ||
@@ -1973,19 +2172,21 @@ const CustomizeProduct = () => {
         );
         const envObjects = allObjects.filter((o) => !designObjects.includes(o));
         const originalVis = envObjects.map((o) => ({ obj: o, visible: o.visible }));
-        const originalBg = canvas.backgroundColor;
+        const originalBg = activeCanvas.backgroundColor;
 
         // Interactive sync is faster: don't hide background if possible, or use lower multiplier
-        envObjects.forEach((o) => o.set('visible', false));
-        canvas.set('backgroundColor', null);
-        
-        // Don't discard selection during interactive drag (causes flicker/shaking)
-        if (!isInteractive) canvas.discardActiveObject();
-        
-        canvas.renderAll();
+        if (!isFlatProduct) {
+            envObjects.forEach((o) => o.set('visible', false));
+        }
+        activeCanvas.set('backgroundColor', isFlatProduct ? activeCanvas.backgroundColor : null);
 
-        const snapshot = canvas.toDataURL({ 
-            multiplier: isInteractive ? 1 : 2, 
+        // Don't discard selection during interactive drag (causes flicker/shaking)
+        if (!isInteractive) activeCanvas.discardActiveObject();
+
+        activeCanvas.renderAll();
+
+        const snapshot = activeCanvas.toDataURL({
+            multiplier: isInteractive ? 1 : 2,
             format: 'png',
             quality: isInteractive ? 0.6 : 1
         });
@@ -2014,6 +2215,7 @@ const CustomizeProduct = () => {
             scaleX: scale,
             scaleY: scale,
             role: 'free-image',
+            sideSlot: editorSide,
             selectable: true,
             evented: true,
             stroke: 'rgba(99,102,241,0.6)',
@@ -2037,23 +2239,52 @@ const CustomizeProduct = () => {
 
     const handleEditorAddText = () => {
         if (!canvas) return;
-        const textObj = new fabric.IText('Text', {
+        const textObj = new fabric.IText('Your Text', {
             fontFamily: 'Arial',
-            fontSize: 34,
-            fill: '#16a34a',
+            fontSize: 40,
+            fill: '#E11D48',
             fontWeight: 'bold',
             originX: 'center',
             originY: 'center',
             left: canvas.width / 2,
             top: canvas.height / 2,
-            role: 'side-text'
+            role: 'side-text',
+            sideSlot: editorSide,
+            selectable: true,
+            evented: true,
+            hasControls: true,
+            hasBorders: true,
+            transparentCorners: false,
+            cornerColor: '#6366f1',
+            cornerSize: 12,
+            cornerStyle: 'circle',
+            borderColor: '#6366f1',
+            borderScaleFactor: 2,
+            // Allow only uniform scaling so text doesn't distort
+            lockUniScaling: false,
         });
+
+        // Show all 8 scale handles + rotation handle so user can drag to resize
+        textObj.setControlsVisibility({
+            mt: true,   // middle-top
+            mb: true,   // middle-bottom
+            ml: true,   // middle-left
+            mr: true,   // middle-right
+            tl: true,   // top-left corner
+            tr: true,   // top-right corner
+            bl: true,   // bottom-left corner
+            br: true,   // bottom-right corner
+            mtr: true   // rotation handle
+        });
+
         canvas.add(textObj);
         canvas.setActiveObject(textObj);
-        if (typeof textObj.enterEditing === 'function') textObj.enterEditing();
+        canvas.bringObjectToFront(textObj);
         canvas.renderAll();
-        syncWrapPreviewFromCanvas();
+        // Trigger live preview so mug/product preview updates
+        setTimeout(() => syncWrapPreviewFromCanvas(true), 50);
     };
+
 
     const currentSideAsset = slotAssets?.[editorSide] || {};
 
@@ -2234,39 +2465,87 @@ const CustomizeProduct = () => {
                                         value={selectedObject.text || ''}
                                         onChange={(e) => {
                                             selectedObject.set('text', e.target.value);
-                                            canvas.renderAll();
+                                            canvas.requestRenderAll();
+                                            setSelectedObject({ ...selectedObject, text: e.target.value });
+
+                                            // LIVE PREVIEW DEBOUNCED
+                                            if (canvas._typingSyncTimeout) clearTimeout(canvas._typingSyncTimeout);
+                                            canvas._typingSyncTimeout = setTimeout(() => {
+                                                if (canvas.getActiveObject() === selectedObject) {
+                                                    syncWrapPreviewFromCanvas(true);
+                                                }
+                                            }, 500);
                                         }}
                                         rows={3}
-                                        className="w-full text-black p-2"
+                                        className="w-full text-black p-2 outline-none border border-slate-300 rounded"
                                     />
                                     <div className="grid grid-cols-2 gap-2">
                                         <input
                                             type="color"
-                                            value={selectedObject.fill || '#000000'}
-                                            onChange={(e) => {
+                                            defaultValue={selectedObject.fill || '#000000'}
+                                            onInput={(e) => {
                                                 selectedObject.set('fill', e.target.value);
-                                                canvas.renderAll();
+                                                canvas.requestRenderAll();
+                                                if (canvas._liveSyncTimeout) clearTimeout(canvas._liveSyncTimeout);
+                                                canvas._liveSyncTimeout = setTimeout(() => syncWrapPreviewFromCanvas(true), 50);
                                             }}
                                             className="w-full h-10"
                                         />
-                                        <input
-                                            type="number"
-                                            value={selectedObject.fontSize || 24}
-                                            onChange={(e) => {
-                                                selectedObject.set('fontSize', Number(e.target.value));
-                                                canvas.renderAll();
-                                            }}
-                                            className="w-full text-black px-2"
-                                        />
+                                        <div className="flex items-center bg-white border border-slate-300 rounded overflow-hidden">
+                                            <button
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                onClick={() => {
+                                                    const newSize = Math.max(5, (selectedObject.fontSize || 34) - 2);
+                                                    selectedObject.set('fontSize', newSize);
+                                                    canvas.renderAll();
+                                                    setSelectedObject({ ...selectedObject, fontSize: newSize });
+                                                    syncWrapPreviewFromCanvas(true);
+                                                }}
+                                                className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-black border-r border-slate-300"
+                                            >
+                                                <FaMinus size={10} />
+                                            </button>
+                                            <input
+                                                type="text"
+                                                value={selectedObject.fontSize || ''}
+                                                onChange={(e) => {
+                                                    const val = e.target.value.replace(/\D/g, '');
+                                                    if (val === '') {
+                                                        setSelectedObject({ ...selectedObject, fontSize: '' });
+                                                        return;
+                                                    }
+                                                    const num = parseInt(val);
+                                                    selectedObject.set('fontSize', num);
+                                                    canvas.renderAll();
+                                                    setSelectedObject({ ...selectedObject, fontSize: num });
+                                                    if (canvas._liveSyncTimeout) clearTimeout(canvas._liveSyncTimeout);
+                                                    canvas._liveSyncTimeout = setTimeout(() => syncWrapPreviewFromCanvas(true), 300);
+                                                }}
+                                                className="w-full text-black px-1 text-center font-bold text-sm outline-none"
+                                            />
+                                            <button
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                onClick={() => {
+                                                    const newSize = (selectedObject.fontSize || 34) + 2;
+                                                    selectedObject.set('fontSize', newSize);
+                                                    canvas.renderAll();
+                                                    setSelectedObject({ ...selectedObject, fontSize: newSize });
+                                                    syncWrapPreviewFromCanvas(true);
+                                                }}
+                                                className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-black border-l border-slate-300"
+                                            >
+                                                <FaPlus size={10} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )}
 
                             <div className="grid grid-cols-4 gap-2 mb-3">
-                                <button className="border border-white/50 py-2 text-xs">Delete</button>
-                                <button className="border border-white/50 py-2 text-xs">Duplicate</button>
-                                <button className="border border-white/50 py-2 text-xs">Front</button>
-                                <button className="border border-white/50 py-2 text-xs">Back</button>
+                                <button onMouseDown={(e) => e.preventDefault()} onClick={handleDeleteSelected} className="border border-white/50 py-2 text-xs hover:bg-red-500/20 transition-colors">Delete</button>
+                                <button onMouseDown={(e) => e.preventDefault()} onClick={handleObjectDuplicate} className="border border-white/50 py-2 text-xs hover:bg-white/10 transition-colors">Duplicate</button>
+                                <button onMouseDown={(e) => e.preventDefault()} onClick={handleObjectForward} className="border border-white/50 py-2 text-xs hover:bg-white/10 transition-colors">Front</button>
+                                <button onMouseDown={(e) => e.preventDefault()} onClick={handleObjectBackward} className="border border-white/50 py-2 text-xs hover:bg-white/10 transition-colors">Back</button>
                             </div>
 
                             <div className="mb-4">
@@ -2508,7 +2787,7 @@ const CustomizeProduct = () => {
                     </div>
                     <div className="container mx-auto flex flex-col lg:flex-row min-h-[calc(100vh-128px)] gap-6">
                         <Card
-                            className="flex-1 relative flex items-center justify-center"
+                            className="flex-1 relative flex flex-col items-center justify-start"
                             style={{ borderRadius: 20 }}
                             bodyStyle={{ padding: 16, height: '100%', overflow: 'visible' }}
                         >
@@ -2544,31 +2823,45 @@ const CustomizeProduct = () => {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-2">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 self-start">Live Preview</p>
-                                    <div className="flex-1 w-full flex items-center justify-center bg-gray-50/80 rounded-2xl min-h-[350px] border border-gray-100">
-                                        {previewImage ? (
-                                            <img
-                                                src={previewImage}
-                                                alt="Your Design"
-                                                className="max-h-[92%] max-w-[92%] object-contain drop-shadow-2xl transition-all duration-500"
-                                            />
-                                        ) : template?.previewImage ? (
-                                            <img
-                                                src={template.previewImage}
-                                                alt={template.name}
-                                                className="max-h-[92%] max-w-[92%] object-contain drop-shadow-xl"
-                                            />
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center text-slate-300 gap-3 p-8 text-center">
-                                                <span className="text-5xl">🖼️</span>
-                                                <p className="text-sm font-bold">Upload a photo to see preview</p>
-                                            </div>
+                                <div className="w-full h-full flex flex-col items-center justify-start gap-4 p-2 pt-[160px]">
+                                    <div className="flex items-center justify-between w-full px-2 max-w-[380px]">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                                            {editorSide === 'front' ? 'Front Live Preview' : editorSide === 'back' ? 'Back Live Preview' : 'Live Preview'}
+                                        </p>
+                                        {isFlatProduct && (
+                                            <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full ${isKeychain ? 'bg-violet-100 text-violet-700' :
+                                                    isCoaster ? 'bg-amber-100 text-amber-700' :
+                                                        isFridgeMagnet ? 'bg-sky-100 text-sky-700' :
+                                                            'bg-rose-100 text-rose-700'
+                                                }`}>
+                                                {isCircularVariant ? '⬤ Round' : isHeartVariant ? '♥ Heart' : '■ Square/Rect'}
+                                            </span>
                                         )}
+                                    </div>
+                                    <div className={`w-full flex items-center justify-center bg-transparent mt-2`}>
+                                        {(() => {
+                                            const containerStyle = `shadow-2xl border-4 border-white bg-white inline-block rounded-3xl overflow-hidden w-full max-w-[420px]`;
+                                            const imgStyle = `w-full h-auto object-contain transition-all duration-500`;
+
+                                            return previewImage ? (
+                                                <div className={containerStyle}>
+                                                    <img src={previewImage} alt="Your Design" className={imgStyle} />
+                                                </div>
+                                            ) : template?.previewImage ? (
+                                                <div className={containerStyle}>
+                                                    <img src={template.previewImage} alt={template.name} className={imgStyle} />
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center text-slate-300 gap-3 p-8 text-center bg-gray-50/80 rounded-2xl w-full max-w-[380px]">
+                                                    <span className="text-5xl">🖼️</span>
+                                                    <p className="text-sm font-bold">Upload a photo to see preview</p>
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                     <button
                                         onClick={handlePreview}
-                                        className="px-6 py-3 border border-slate-200 rounded-2xl text-[11px] font-black uppercase tracking-[0.15em] text-slate-600 hover:bg-slate-50 transition-all"
+                                        className="mt-4 px-6 py-3 border border-slate-200 rounded-2xl text-[11px] font-black uppercase tracking-[0.15em] text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
                                     >
                                         👁️ Full Preview
                                     </button>
@@ -2621,7 +2914,7 @@ const CustomizeProduct = () => {
                                                 </button>
                                                 <div className="flex-1 text-center py-2 rounded-xl bg-black/20 border border-white/10">
                                                     <p className="text-[9px] uppercase tracking-[0.2em] text-gray-400">Editing Side</p>
-                                                    <p className="text-sm font-black uppercase">{editorSide}</p>
+                                                    <p className="text-sm font-black uppercase">{editorSide === 'front' ? 'Front Side' : editorSide === 'back' ? 'Back Side' : editorSide}</p>
                                                 </div>
                                                 <button
                                                     onClick={() => cycleEditorSide(1)}
@@ -2655,12 +2948,14 @@ const CustomizeProduct = () => {
 
                                             <div className="grid grid-cols-2 gap-3 mt-3">
                                                 <button
+                                                    onMouseDown={(e) => e.preventDefault()}
                                                     onClick={handleEditorImageUpload}
                                                     className="py-3 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 transition-all font-black text-sm flex items-center justify-center gap-2"
                                                 >
                                                     <FaImage /> Add Image
                                                 </button>
                                                 <button
+                                                    onMouseDown={(e) => e.preventDefault()}
                                                     onClick={handleEditorAddText}
                                                     className="py-3 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 transition-all font-black text-sm flex items-center justify-center gap-2"
                                                 >
@@ -2672,6 +2967,7 @@ const CustomizeProduct = () => {
                                                 {['left', 'center', 'right'].map((side) => (
                                                     <button
                                                         key={`upload-${side}`}
+                                                        onMouseDown={(e) => e.preventDefault()}
                                                         onClick={() => uploadImageForSide(side)}
                                                         className={`py-2 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all ${editorSide === side
                                                             ? 'bg-white text-[#222] border-white'
@@ -2763,20 +3059,52 @@ const CustomizeProduct = () => {
                                                                 onChange={(e) => {
                                                                     selectedObject.set('fill', e.target.value);
                                                                     canvas.renderAll();
+                                                                    setSelectedObject({ ...selectedObject, fill: e.target.value });
                                                                 }}
                                                                 className="w-full h-11 rounded-xl border cursor-pointer"
                                                             />
-                                                            <input
-                                                                type="number"
-                                                                min="8"
-                                                                max="200"
-                                                                value={selectedObject.fontSize || 24}
-                                                                onChange={(e) => {
-                                                                    selectedObject.set('fontSize', Number(e.target.value));
-                                                                    canvas.renderAll();
-                                                                }}
-                                                                className="w-full border p-2 rounded-xl"
-                                                            />
+                                                            <div className="flex items-center bg-white border border-slate-300 rounded-xl overflow-hidden h-11">
+                                                                <button
+                                                                    onMouseDown={(e) => e.preventDefault()}
+                                                                    onClick={() => {
+                                                                        const newSize = Math.max(5, (selectedObject.fontSize || 34) - 2);
+                                                                        selectedObject.set('fontSize', newSize);
+                                                                        canvas.renderAll();
+                                                                        setSelectedObject({ ...selectedObject, fontSize: newSize });
+                                                                    }}
+                                                                    className="px-3 h-full bg-slate-100 hover:bg-slate-200 text-black border-r border-slate-300"
+                                                                >
+                                                                    <FaMinus size={12} />
+                                                                </button>
+                                                                <input
+                                                                    type="text"
+                                                                    value={selectedObject.fontSize || ''}
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.value.replace(/\D/g, '');
+                                                                        if (val === '') {
+                                                                            setSelectedObject({ ...selectedObject, fontSize: '' });
+                                                                            return;
+                                                                        }
+                                                                        const num = parseInt(val);
+                                                                        selectedObject.set('fontSize', num);
+                                                                        canvas.renderAll();
+                                                                        setSelectedObject({ ...selectedObject, fontSize: num });
+                                                                    }}
+                                                                    className="w-full text-black px-1 text-center font-bold text-sm outline-none bg-white"
+                                                                />
+                                                                <button
+                                                                    onMouseDown={(e) => e.preventDefault()}
+                                                                    onClick={() => {
+                                                                        const newSize = (selectedObject.fontSize || 34) + 2;
+                                                                        selectedObject.set('fontSize', newSize);
+                                                                        canvas.renderAll();
+                                                                        setSelectedObject({ ...selectedObject, fontSize: newSize });
+                                                                    }}
+                                                                    className="px-3 h-full bg-slate-100 hover:bg-slate-200 text-black border-l border-slate-300"
+                                                                >
+                                                                    <FaPlus size={12} />
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                         <div className="grid grid-cols-3 gap-2">
                                                             <button
@@ -2826,6 +3154,51 @@ const CustomizeProduct = () => {
                                     </div>
                                 ) : (
                                     <>
+                                        {/* ── Category-specific Info Banner for flat products ────── */}
+                                        {isFlatProduct && (
+                                            <div className={`rounded-2xl p-4 mb-4 -mx-4 border ${isKeychain ? 'bg-violet-50 border-violet-200' :
+                                                    isCoaster ? 'bg-amber-50 border-amber-200' :
+                                                        isFridgeMagnet ? 'bg-sky-50 border-sky-200' :
+                                                            'bg-rose-50 border-rose-200'
+                                                }`}>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-2xl">
+                                                        {isKeychain ? '🔑' : isCoaster ? '☕' : isFridgeMagnet ? '🧲' : '⭐'}
+                                                    </span>
+                                                    <div className="flex-1">
+                                                        <p className={`text-[11px] font-black uppercase tracking-wider ${isKeychain ? 'text-violet-700' :
+                                                                isCoaster ? 'text-amber-700' :
+                                                                    isFridgeMagnet ? 'text-sky-700' :
+                                                                        'text-rose-700'
+                                                            }`}>
+                                                            {isKeychain ? 'MDF Keychain' : isCoaster ? 'MDF Coaster' : isFridgeMagnet ? 'Fridge Magnet' : 'Iron on Sticker'}
+                                                            {isCircularVariant && ' • Round'}
+                                                            {isHeartVariant && ' • Heart'}
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                                                            {template.productSize && (
+                                                                <span className="text-[9px] text-slate-500 font-bold">
+                                                                    📦 Size: <span className="text-slate-800">{template.productSize}</span>
+                                                                </span>
+                                                            )}
+                                                            {template.printSize && (
+                                                                <span className="text-[9px] text-slate-500 font-bold">
+                                                                    🖨️ Print: <span className="text-slate-800">{template.printSize}</span>
+                                                                </span>
+                                                            )}
+                                                            {template.moq && (
+                                                                <span className="text-[9px] text-slate-500 font-bold">
+                                                                    🛒 MOQ: <span className="text-slate-800">
+                                                                        {isCoaster ? '2 / 4 / 6 / 8' : isIronOnSticker ? `${template.moq} (×4)` : template.moq}
+                                                                    </span>
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* ── Design Canvas ────────────────────────────────────────── */}
                                         <div className="bg-[#181818] rounded-2xl p-3 mb-4 -mx-4 -mt-4">
                                             <div className="flex items-center justify-between mb-2">
@@ -2835,7 +3208,7 @@ const CustomizeProduct = () => {
                                                 <p className="text-[9px] text-gray-500">Drag &amp; resize to edit</p>
                                             </div>
                                             <div className="bg-[linear-gradient(45deg,#f0f0f0_25%,transparent_25%),linear-gradient(-45deg,#f0f0f0_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#f0f0f0_75%),linear-gradient(-45deg,transparent_75%,#f0f0f0_75%)] bg-[length:20px_20px] bg-[position:0_0,0_10px,10px_-10px,-10px_0px] rounded-xl flex items-center justify-center p-2 min-h-[260px] overflow-auto">
-                                                <div className="shadow-xl border-4 border-white rounded-xl bg-white inline-block">
+                                                <div className={`shadow-xl border-4 border-white bg-white inline-block ${isCircularVariant ? 'rounded-full overflow-hidden' : isHeartVariant ? 'rounded-2xl' : 'rounded-xl'}`}>
                                                     <canvas ref={canvasRef} />
                                                 </div>
                                             </div>
@@ -2934,18 +3307,23 @@ const CustomizeProduct = () => {
                             <div className="p-6 border-t space-y-5 bg-white shadow-[0_-15px_30px_-15px_rgba(0,0,0,0.05)] rounded-t-[2.5rem]">
                                 {/* Quantity Selector UI */}
                                 <div className="flex items-center justify-between bg-slate-50/80 p-5 rounded-2xl border border-slate-100/50">
-                                    <span className="text-[11px] font-[900] text-slate-400 uppercase tracking-widest leading-none">Quantity</span>
+                                    <div>
+                                        <span className="text-[11px] font-[900] text-slate-400 uppercase tracking-widest leading-none">Quantity</span>
+                                        {moqStep > 1 && (
+                                            <p className="text-[9px] text-amber-500 font-bold mt-0.5">Steps of {moqStep} only</p>
+                                        )}
+                                    </div>
                                     <div className="flex items-center gap-5 bg-white rounded-xl shadow-sm p-1.5 border border-slate-100">
                                         <button
-                                            onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                                            onClick={() => setQuantity(q => Math.max(template.moq || 1, q - moqStep))}
                                             className="w-10 h-10 flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-800 rounded-lg disabled:opacity-30"
                                             disabled={quantity <= (template.moq || 1)}
                                         >
                                             <FaMinus size={12} />
                                         </button>
-                                        <span className="w-8 text-center font-[900] text-slate-900 text-[18px]">{quantity}</span>
+                                        <span className="w-10 text-center font-[900] text-slate-900 text-[18px]">{quantity}</span>
                                         <button
-                                            onClick={() => setQuantity(q => q + 1)}
+                                            onClick={() => setQuantity(q => q + moqStep)}
                                             className="w-10 h-10 flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-800 rounded-lg"
                                         >
                                             <FaPlus size={12} />

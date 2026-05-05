@@ -40,7 +40,7 @@ const MugWrapPreview = ({ photoUrl, templateBgUrl, wrapType = 'mug', mockupViews
         });
 
     let effectiveMockupViews = orderedMockupViews;
-    
+
     // Auto-fallback: if admin uploaded `backgroundImageUrl` but didn't setup mockups, synthesize one
     if (effectiveMockupViews.length === 0 && templateBgUrl) {
         effectiveMockupViews = [{
@@ -64,7 +64,7 @@ const MugWrapPreview = ({ photoUrl, templateBgUrl, wrapType = 'mug', mockupViews
             flipBg: mv.side === 'right' && (wrapType === 'mug' || wrapType === 'bottle' || wrapType === 'planter') && hasSameBackgrounds
         }))
         : DEFAULT_VIEWS.map(v => ({ ...v, wrapType }));
-    
+
     const activeViewForCanvas = ALL_VIEWS[currentViewIndex] || ALL_VIEWS[0];
     const isPhotographicView = activeViewForCanvas?.type === 'photographic';
 
@@ -321,7 +321,7 @@ const MugWrapPreview = ({ photoUrl, templateBgUrl, wrapType = 'mug', mockupViews
                     let destY = (p.y / 100) * H;
                     const destW = (p.width / 100) * W;
                     let destH = (p.height / 100) * H;
-                    
+
                     // The system will now strictly follow the admin's generated placement box
                     // The admin MUST draw the box to exact bounds in the Mockup Editor Tab!
 
@@ -348,7 +348,7 @@ const MugWrapPreview = ({ photoUrl, templateBgUrl, wrapType = 'mug', mockupViews
                         // A wrap design is a full cylinder (~3.14x the visible front width).
                         // So from any angle, you see roughly 1/3 to 38% of it.
                         const isWideWrap = (designImg.width / designImg.height) > 1.5;
-                        const fov = isWideWrap ? 0.38 : 1.0; 
+                        const fov = isWideWrap ? 0.38 : 1.0;
                         const viewCenter = designImg.width * (activeView.offsetRatio || 0.5);
                         const viewWidth = designImg.width * fov;
                         const startX = viewCenter - viewWidth / 2;
@@ -358,11 +358,11 @@ const MugWrapPreview = ({ photoUrl, templateBgUrl, wrapType = 'mug', mockupViews
                             const smile = Math.sin(progress * Math.PI);
                             // Top edge starts at 0, dips to `effectiveCurve`
                             const yOff = effectiveCurve * smile;
-                            
+
                             let sX = Math.floor(startX + (progress * viewWidth));
                             if (sX < 0) sX = 0;
                             if (sX > designImg.width - 1) sX = designImg.width - 1;
-                            
+
                             const sW = Math.max(1, Math.ceil(viewWidth / strips));
 
                             try {
@@ -376,7 +376,7 @@ const MugWrapPreview = ({ photoUrl, templateBgUrl, wrapType = 'mug', mockupViews
                     } else if (designImg) {
                         // If flat, crop it properly if it's a wide wrap
                         const isWideWrap = (designImg.width / designImg.height) > 1.5;
-                        const fov = isWideWrap ? 0.38 : 1.0; 
+                        const fov = isWideWrap ? 0.38 : 1.0;
                         const viewCenter = designImg.width * (activeView.offsetRatio || 0.5);
                         const viewWidth = designImg.width * fov;
                         let startX = viewCenter - viewWidth / 2;
@@ -389,7 +389,7 @@ const MugWrapPreview = ({ photoUrl, templateBgUrl, wrapType = 'mug', mockupViews
                                 startX, 0, viewWidth, designImg.height,
                                 0, 0, destW, destH
                             );
-                        } catch(e) {}
+                        } catch (e) { }
                     }
 
                     if (selectedText) {
@@ -499,17 +499,17 @@ const MugWrapPreview = ({ photoUrl, templateBgUrl, wrapType = 'mug', mockupViews
                 ctx.shadowColor = 'rgba(0,0,0,0.1)';
                 ctx.shadowBlur = 15;
                 ctx.translate(mugX, mugY);
-                
+
                 let bodyPathStr;
                 if (wrapType === 'mug' || wrapType === 'bottle' || wrapType === 'planter') {
                     bodyPathStr = createMugSmilePath(mugWidth, mugHeight, curveDepth);
                 } else {
                     bodyPathStr = `M 0 0 L ${mugWidth} 0 L ${mugWidth} ${mugHeight} L 0 ${mugHeight} Z`;
                 }
-                
+
                 try {
                     ctx.fill(new Path2D(bodyPathStr));
-                } catch(e) {
+                } catch (e) {
                     ctx.fillRect(0, 0, mugWidth, mugHeight);
                 }
                 ctx.restore();
@@ -539,26 +539,26 @@ const MugWrapPreview = ({ photoUrl, templateBgUrl, wrapType = 'mug', mockupViews
 
                     const iw = designImg.width;
                     const ih = designImg.height;
-                    
+
                     const isWideWrap = (iw / ih) > 1.5;
-                    const fov = isWideWrap ? 0.38 : 1.0; 
+                    const fov = isWideWrap ? 0.38 : 1.0;
                     const viewCenter = iw * (activeView.offsetRatio || 0.5);
                     const viewWidth = iw * fov;
                     let startX = viewCenter - viewWidth / 2;
 
-                    const { dx, dy, dw, dh } = getDrawBox({width: viewWidth, height: ih}, slotW, slotH, selectedTransform);
-                    
+                    const { dx, dy, dw, dh } = getDrawBox({ width: viewWidth, height: ih }, slotW, slotH, selectedTransform);
+
                     if (clipKind === 'mug-wrap' || clipKind === 'wave') {
                         const strips = Math.max(12, Math.ceil(slotW));
                         for (let i = 0; i < strips; i++) {
                             const progress = i / strips;
                             const smile = Math.sin(progress * Math.PI);
                             const yOff = curveDepth * smile;
-                            
+
                             let sX = Math.floor(startX + (progress * viewWidth));
                             if (sX < 0) sX = 0;
                             if (sX > iw - 1) sX = iw - 1;
-                            
+
                             const sW = Math.max(1, Math.ceil(viewWidth / strips));
                             const sliceW = dw / strips;
                             try {
@@ -570,7 +570,7 @@ const MugWrapPreview = ({ photoUrl, templateBgUrl, wrapType = 'mug', mockupViews
                         if (startX + viewWidth > iw) startX = iw - viewWidth;
                         try {
                             ctx.drawImage(designImg, startX, 0, viewWidth, ih, 0, 0, slotW, slotH);
-                        } catch(e) {}
+                        } catch (e) { }
                     }
                     ctx.restore();
                 }

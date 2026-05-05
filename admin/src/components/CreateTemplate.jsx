@@ -1783,17 +1783,39 @@ const CreateTemplate = () => {
         const CANVAS_W = canvas.width || 400;
         const CANVAS_H = canvas.height || 600;
         const toPlacement = (ph) => {
-            const width = ph.getScaledWidth ? ph.getScaledWidth() : (ph.width || 120);
-            const height = ph.getScaledHeight ? ph.getScaledHeight() : (ph.height || 120);
-            const left = (ph.left || CANVAS_W / 2) - width / 2;
-            const top = (ph.top || CANVAS_H / 2) - height / 2;
+            const bbWidth = ph.getScaledWidth ? ph.getScaledWidth() : (ph.width || 120);
+            const bbHeight = ph.getScaledHeight ? ph.getScaledHeight() : (ph.height || 120);
+            // Use getCenterPoint() to correctly derive position regardless of originX/Y.
+            const centerPt = ph.getCenterPoint ? ph.getCenterPoint() : { x: ph.left || CANVAS_W / 2, y: ph.top || CANVAS_H / 2 };
+
+            if (ph.shapeType === 'mug-wrap') {
+                // mug-wrap SVG bounding box is taller than the design area by `curve` pixels
+                // (the curves dip beyond the rectangular part). Store design dimensions only.
+                const curve = ph.curveIntensity || 35;
+                const designW = bbWidth;            // horizontal extent = design width ✓
+                const designH = bbHeight - curve;   // subtract the curve overhang
+                const designLeft = centerPt.x - designW / 2;
+                // bounding box top = path y=0 = design top
+                const designTop = centerPt.y - bbHeight / 2;
+                return {
+                    x: Math.max(0, Math.min(100, (designLeft / CANVAS_W) * 100)),
+                    y: Math.max(0, Math.min(100, (designTop / CANVAS_H) * 100)),
+                    width: Math.max(5, Math.min(100, (designW / CANVAS_W) * 100)),
+                    height: Math.max(5, Math.min(100, (designH / CANVAS_H) * 100)),
+                    angle: ph.angle || 0,
+                    curve
+                };
+            }
+
+            const left = centerPt.x - bbWidth / 2;
+            const top  = centerPt.y - bbHeight / 2;
             return {
                 x: Math.max(0, Math.min(100, (left / CANVAS_W) * 100)),
                 y: Math.max(0, Math.min(100, (top / CANVAS_H) * 100)),
-                width: Math.max(5, Math.min(100, (width / CANVAS_W) * 100)),
-                height: Math.max(5, Math.min(100, (height / CANVAS_H) * 100)),
+                width: Math.max(5, Math.min(100, (bbWidth / CANVAS_W) * 100)),
+                height: Math.max(5, Math.min(100, (bbHeight / CANVAS_H) * 100)),
                 angle: ph.angle || 0,
-                curve: ph.shapeType === 'mug-wrap' ? 35 : 0
+                curve: 0
             };
         };
         const norm = (shape) => (shape === 'rect' ? 'rectangle' : shape || 'rectangle');
@@ -2149,39 +2171,61 @@ const CreateTemplate = () => {
         if (!canvas || !ph) return null;
         const CANVAS_W = canvas.width || 400;
         const CANVAS_H = canvas.height || 600;
-        const width = ph.getScaledWidth ? ph.getScaledWidth() : (ph.width || 120);
-        const height = ph.getScaledHeight ? ph.getScaledHeight() : (ph.height || 120);
-        const left = (ph.left || CANVAS_W / 2) - width / 2;
-        const top = (ph.top || CANVAS_H / 2) - height / 2;
+        const bbWidth  = ph.getScaledWidth  ? ph.getScaledWidth()  : (ph.width  || 120);
+        const bbHeight = ph.getScaledHeight ? ph.getScaledHeight() : (ph.height || 120);
+        // getCenterPoint() accounts for any originX/Y setting correctly.
+        const centerPt = ph.getCenterPoint
+            ? ph.getCenterPoint()
+            : { x: ph.left || CANVAS_W / 2, y: ph.top || CANVAS_H / 2 };
 
-        let customPath = null;
-        if (ph.type === 'path') {
-            // Fabric 6 path conversion to SVG string
-            customPath = ph.path.map(seg => seg.join(' ')).join(' ');
-        } else if (ph.shapeType === 'heart') {
-            customPath = 'M 272.7 238.7 C 206.5 238.7 152.7 292.5 152.7 358.7 C 152.7 493.5 288.6 528.8 381.3 662 C 468.8 529.6 609.8 489.2 609.8 358.7 C 609.8 292.5 556.1 238.7 489.8 238.7 C 441.8 238.7 400.4 267.1 381.3 307.9 C 362.1 267.1 320.7 238.7 272.7 238.7 Z';
-        } else if (ph.shapeType === 'mug-wrap') {
-            const curve = ph.curveIntensity || 35;
-            customPath = createMugSmilePath(width, height, curve);
+        // ── mug-wrap special case ──────────────────────────────────────────
+        // Use the stored _mugDesign* properties stamped onto the shape at creation
+        // to completely avoid Fabric.js bounding-box / pathOffset ambiguities.
+        if (ph.shapeType === 'mug-wrap') {
+            const curve   = ph._mugDesignCurve ?? ph.curveIntensity ?? 35;
+            // If admin only MOVED the shape (no scale), the design dims are unchanged.
+            // If somehow scaled, account for scaleX/scaleY.
+            const scaleX  = ph.scaleX || 1;
+            const scaleY  = ph.scaleY || 1;
+            const designW = (ph._mugDesignW ?? bbWidth)  * scaleX;
+            const designH = (ph._mugDesignH ?? (bbHeight - curve)) * scaleY;
+
+            // Reliable position: bbox top-left in canvas space.
+            // bbox center = getCenterPoint() for originX/Y:'center'.
+            // bbox height = (designH + curve) * scaleY  →  top = center.y - that/2
+            const bbH = (designH + curve * scaleY);
+            const designLeft = centerPt.x - (designW) / 2;
+            const designTop  = centerPt.y - bbH / 2;
+
+            const customPath = createMugSmilePath(designW, designH, curve);
             return {
-                x: (left / CANVAS_W) * 100,
-                y: (top / CANVAS_H) * 100,
-                width: (width / CANVAS_W) * 100,
-                height: (height / CANVAS_H) * 100,
+                x: (designLeft / CANVAS_W) * 100,
+                y: (designTop  / CANVAS_H) * 100,
+                width:  (designW / CANVAS_W) * 100,
+                height: (designH / CANVAS_H) * 100,
                 angle: ph.angle || 0,
                 curve,
                 customPath
             };
         }
 
+        // ── generic shapes (rect, circle, heart, custom path, etc.) ─────────
+        let customPath = null;
+        if (ph.type === 'path') {
+            customPath = ph.path.map(seg => seg.join(' ')).join(' ');
+        } else if (ph.shapeType === 'heart') {
+            customPath = 'M 272.7 238.7 C 206.5 238.7 152.7 292.5 152.7 358.7 C 152.7 493.5 288.6 528.8 381.3 662 C 468.8 529.6 609.8 489.2 609.8 358.7 C 609.8 292.5 556.1 238.7 489.8 238.7 C 441.8 238.7 400.4 267.1 381.3 307.9 C 362.1 267.1 320.7 238.7 272.7 238.7 Z';
+        }
+        const left = centerPt.x - bbWidth  / 2;
+        const top  = centerPt.y - bbHeight / 2;
         return {
             x: (left / CANVAS_W) * 100,
-            y: (top / CANVAS_H) * 100,
-            width: (width / CANVAS_W) * 100,
-            height: (height / CANVAS_H) * 100,
+            y: (top  / CANVAS_H) * 100,
+            width:  (bbWidth  / CANVAS_W) * 100,
+            height: (bbHeight / CANVAS_H) * 100,
             angle: ph.angle || 0,
             curve: 0,
-            customPath: customPath
+            customPath
         };
     };
 
@@ -2312,41 +2356,75 @@ const CreateTemplate = () => {
         const cH = canvas.height;
 
         let shape;
+        // Pre-compute design pixel dimensions from the saved percentage placement.
+        const designW = cW * (p.width  / 100);
+        const designH = cH * (p.height / 100);
+
         if (mv.shapeType === 'mug-wrap') {
             const curve = p.curve || 35;
-            const pathStr = createMugSmilePath(cW * (p.width / 100), cH * (p.height / 100), curve);
+            const pathStr = createMugSmilePath(designW, designH, curve);
             shape = new fabric.Path(pathStr, {
                 fill: 'rgba(56, 189, 248, 0.2)',
                 stroke: '#38bdf8',
                 strokeWidth: 3,
                 strokeDashArray: [10, 5],
                 shapeType: 'mug-wrap',
-                curveIntensity: curve
+                curveIntensity: curve,
+                angle: p.angle || 0,
+                id: 'temp_mockup_designer',
+                role: 'placeholder',
+                originX: 'center',
+                originY: 'center'
             });
+            // Store design dims so getPlacementFromPlaceholder can recover them exactly
+            // regardless of Fabric's internal path normalization / bounding box quirks.
+            shape._mugDesignW     = designW;
+            shape._mugDesignH     = designH;
+            shape._mugDesignCurve = curve;
+            shape._mugDesignX     = (p.x / 100) * cW;  // design top-left in canvas px
+            shape._mugDesignY     = (p.y / 100) * cH;
+            // Use setPositionByOrigin to reliably place the design top-left at the intended
+            // canvas coordinate, accounting for Fabric's internal path offset.
+            shape.setCoords();
+            // Design top-left of the bounding box must sit at (designX, designY).
+            // bbox height = designH + curve, bbox width = designW.
+            // With originX/Y:'center', we need the center of the bbox:
+            shape.setPositionByOrigin(
+                new fabric.Point(
+                    (p.x / 100) * cW + designW / 2,
+                    (p.y / 100) * cH + (designH + curve) / 2
+                ),
+                'center', 'center'
+            );
+            shape.setCoords();
         } else {
             shape = new fabric.Rect({
-                width: cW * (p.width / 100),
-                height: cH * (p.height / 100),
+                width:  designW,
+                height: designH,
                 fill: 'rgba(99, 102, 241, 0.15)',
                 stroke: '#6366f1',
                 strokeWidth: 3,
                 strokeDashArray: [10, 5],
                 rx: mv.shapeType === 'rounded' ? 20 : 0,
                 ry: mv.shapeType === 'rounded' ? 20 : 0,
-                shapeType: mv.shapeType || 'rectangle'
+                shapeType: mv.shapeType || 'rectangle',
+                angle: p.angle || 0,
+                id: 'temp_mockup_designer',
+                role: 'placeholder',
+                originX: 'center',
+                originY: 'center'
             });
             if (mv.shapeType === 'circle') shape.set({ rx: 999, ry: 999 });
+            shape.setCoords();
+            shape.setPositionByOrigin(
+                new fabric.Point(
+                    (p.x / 100) * cW + designW / 2,
+                    (p.y / 100) * cH + designH / 2
+                ),
+                'center', 'center'
+            );
+            shape.setCoords();
         }
-
-        shape.set({
-            left: (p.x / 100) * cW + (cW * (p.width / 100) / 2),
-            top: (p.y / 100) * cH + (cH * (p.height / 100) / 2),
-            originX: 'center',
-            originY: 'center',
-            angle: p.angle || 0,
-            id: 'temp_mockup_designer',
-            role: 'placeholder' // So standard tools like 'Draw Custom Shape' work on it
-        });
 
         canvas.add(shape);
         canvas.setActiveObject(shape);
@@ -3062,6 +3140,55 @@ const CreateTemplate = () => {
                                             onChange={e => setPrintSize(e.target.value)}
                                         />
                                     </div>
+
+                                    {/* ── Category Quick Fill presets for new flat categories ── */}
+                                    {(() => {
+                                        const catL = (category || '').toLowerCase();
+                                        const isKch = catL.includes('keychain');
+                                        const isCst = catL.includes('coaster');
+                                        const isFmg = catL.includes('fridge') || catL.includes('magnet');
+                                        const isIos = catL.includes('iron') || catL.includes('sticker');
+                                        if (!isKch && !isCst && !isFmg && !isIos) return null;
+
+                                        const presets = isKch ? [
+                                            { label: '3.1 Round', productSize: '2.7 Inch Dia', printSize: '2.7 Inch Dia', moq: 2, wrapType: '' },
+                                            { label: '3.2 Square', productSize: '2.7×2.7 Inch', printSize: '2.7×2.7 Inch', moq: 2, wrapType: '' },
+                                            { label: '3.3 Rectangle', productSize: '1.7×2.7 Inch', printSize: '1.7×2.7 Inch', moq: 2, wrapType: '' },
+                                            { label: '3.4 Heart', productSize: '2.7×2.7 Inch', printSize: '2.7×2.7 Inch', moq: 2, wrapType: '' },
+                                        ] : isCst ? [
+                                            { label: '4.1 Round ×2', productSize: '4 Inch Dia', printSize: '4 Inch Dia', moq: 2, wrapType: '' },
+                                            { label: '4.2 Square ×2', productSize: '4×4 Inch', printSize: '4×4 Inch', moq: 2, wrapType: '' },
+                                        ] : isFmg ? [
+                                            { label: '5.1 Round', productSize: '2.5 Inch Dia', printSize: '2.5 Inch Dia', moq: 1, wrapType: '' },
+                                            { label: '5.2 Square 2.5"', productSize: '2.5×2.5 Inch', printSize: '2.5×2.5 Inch', moq: 1, wrapType: '' },
+                                            { label: '5.3 Square 4"', productSize: '4×4 Inch', printSize: '4×4 Inch', moq: 1, wrapType: '' },
+                                        ] : [
+                                            { label: '6.1 Sticker', productSize: '1.25×2 Inch', printSize: '1.25×2.25 Inch', moq: 20, wrapType: '' },
+                                        ];
+
+                                        return (
+                                            <div className="mt-1 p-3 bg-violet-50 border border-violet-100 rounded-xl space-y-2">
+                                                <p className="text-[9px] font-black uppercase text-violet-500 tracking-widest">⚡ Quick Fill Presets</p>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {presets.map(p => (
+                                                        <button
+                                                            key={p.label}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setProductSize(p.productSize);
+                                                                setPrintSize(p.printSize);
+                                                                setMoq(p.moq);
+                                                            }}
+                                                            className="px-2 py-1 rounded-lg bg-white border border-violet-200 text-violet-700 text-[9px] font-black hover:bg-violet-100 transition-all"
+                                                        >
+                                                            {p.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <p className="text-[8px] text-violet-400 font-medium">Click to auto-fill size fields</p>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </section>
 
